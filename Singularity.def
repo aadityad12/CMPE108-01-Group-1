@@ -1,0 +1,16 @@
+Bootstrap: docker
+From: python:3.10-slim
+
+%post
+    apt-get update
+    apt-get install -y --no-install-recommends git ca-certificates libglib2.0-0
+    rm -rf /var/lib/apt/lists/*
+    python -m pip install --no-cache-dir torch==2.5.1 --index-url https://download.pytorch.org/whl/cu121
+    python -m pip install --no-cache-dir numpy==1.26.4 Pillow==11.0.0 einops==0.8.0 opencv-python-headless==4.10.0.84 matplotlib==3.9.2
+
+%environment
+    export PYTHONNOUSERSITE=1
+    export PYTHONUNBUFFERED=1
+
+%runscript
+    exec python "$@"

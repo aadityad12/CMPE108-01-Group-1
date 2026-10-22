@@ -1,0 +1,34 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Write Like Me — validation</title><style>
+:root{font-size:17px;--ink:#182934;--muted:#526570;--brand:#096b70;--paper:#fff;--edge:#dce6e9}
+*{box-sizing:border-box}body{margin:0;background:#f3f6f5;color:var(--ink);font:1rem/1.65 system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+main{max-width:1100px;margin:30px auto;padding:48px 56px;background:var(--paper);border:1px solid var(--edge);border-radius:14px}
+header{border-bottom:3px solid var(--brand);padding-bottom:22px;margin-bottom:24px}h1{font-size:3.2rem;line-height:1.1;margin:.1em 0;color:var(--brand);letter-spacing:-.04em}
+.eyebrow{font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--brand)}.subtitle{font-size:1.3rem;color:var(--muted)}
+h2{font-size:1.55rem;line-height:1.3;margin-top:2.5rem;padding-top:16px;border-top:1px solid var(--edge);scroll-margin-top:90px}h3{font-size:1.1rem;color:var(--brand)}p{margin:.9em 0}
+nav{display:flex;gap:8px;flex-wrap:wrap;padding:12px 0}nav a{font-size:.78rem;padding:5px 9px;background:#eaf4f2;border-radius:5px;text-decoration:none}
+a{color:#066875;text-underline-offset:3px}strong{font-weight:700}li{margin:.5em 0;padding-left:4px}table{border-collapse:collapse;width:100%;font-size:.86rem;margin:1.2rem 0;line-height:1.5}
+th,td{text-align:left;vertical-align:top;padding:12px;border:1px solid var(--edge)}th{background:#e6f1ef;color:#16494d}tr:nth-child(even){background:#fafcfb}
+pre{position:relative;overflow:auto;background:#142b36;color:#eef8f6;padding:20px;border-radius:8px;font-size:.78rem;line-height:1.65;margin:1rem 0;white-space:pre}
+code{font: .88em ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}p code,li code,td code{background:#edf3f2;border-radius:3px;padding:1px 4px}pre code{font-size:1em;overflow-wrap:normal}
+details{border:1px solid var(--edge);border-radius:7px;padding:12px;margin:12px 0}summary{cursor:pointer;font-weight:650;color:var(--brand)}details pre{max-height:640px}
+.toolbar{position:sticky;top:0;background:#fffef9ed;backdrop-filter:blur(8px);z-index:3;padding:10px 18px;border-bottom:1px solid var(--edge);display:flex;gap:14px;justify-content:center;align-items:center;font-size:.8rem}
+button{font:inherit;cursor:pointer;border:1px solid #a9c5c7;border-radius:5px;background:#fff;color:var(--brand);padding:5px 10px}.copy{float:right;font-size:11px;margin:0 0 6px 12px;background:#234651;color:white;border:0}
+.equation{background:#f4f8f7;border:1px solid var(--edge);padding:16px;overflow:auto;border-radius:6px}math{font-size:1.2rem}.references{list-style:none;padding-left:0}.references li{padding:12px 0;border-bottom:1px solid var(--edge)}
+footer{font-size:.8rem;color:var(--muted);margin-top:40px;border-top:1px solid var(--edge);padding-top:16px}
+@media(max-width:760px){main{margin:0;padding:25px 18px;border:0;border-radius:0}h1{font-size:2.5rem}table{display:block;overflow-x:auto}.toolbar{justify-content:flex-start;flex-wrap:wrap}pre{font-size:.7rem}}
+@media print{body{background:white;font-size:10pt}main{max-width:none;margin:0;padding:0;border:0}.toolbar,nav,.copy,#code{display:none}h2{break-after:avoid}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f0f4f3;color:#172c31;border:1px solid #bfcfd0;font-size:8pt}a{color:inherit}tr,details{break-inside:avoid}details pre{max-height:none}header{break-after:avoid}}
+</style></head><body><main><h1>Validation</h1><p>These are software checks, not results of a writer-personalization study.</p>
+<ul><li>Loaded the official pinned checkpoint with all 673 model-state entries; 6,389,041 model parameters.</li>
+<li>Ran CPU bidirectional beam-search inference on the official example; the output is recorded in the guide.</li>
+<li>Ran two actual optimization updates and decoding for full-model, decoder-only, and FFN-LoRA adaptation on a small integration fixture.</li>
+<li>Passed six unit/integration tests: tokenization/metrics; image polarity; nested splits; LoRA identity/gradients; decoder freezing; adapter save/reload/resume.</li>
+<li>Generated writer-summary CSV files and a learning-curve plot from integration fixtures. Fixture performance is not presented as scientific evidence.</li>
+<li>Compiled the Python files and syntax-checked both Slurm shell scripts.</li>
+<li>Started the local Gradio 6.30.0 app, recognized an uploaded image, uploaded ten labeled test fixtures, trained a one-step LoRA adapter through the app, downloaded its checkpoint, and recognized again using the session's personalized model.</li>
+<li>Checked guide HTML structure, links within the guide, archive file inclusion, and absence of third-party weights/datasets.</li></ul>
+<p>Executed core checks with Python 3.12, PyTorch 2.5.1+cpu, NumPy 1.26.4, Pillow 11.0.0, einops 0.8.0, and OpenCV 4.10.0. The recommended Python 3.10 environment is a compatible installation target, but was not separately executed here.</p>
+<p>Not performed here: GPU/CUDA execution, SJSU login or Slurm submission, container build, full CROHME-2023/HME100K import, writer-provenance verification, public-data access approval, or the final research experiments. Dataset-specific directory paths and metadata must be checked after download. Browser rendering of the guide was unavailable; HTML structure and link targets were checked.</p><footer>Write Like Me · Original experiment starter · Prepared 20 October 2026</footer></main><script>
+const size=document.getElementById('fontSize');
+if(size)size.addEventListener('input',()=>document.documentElement.style.fontSize=size.value+'px');
+document.querySelectorAll('pre').forEach(pre=>{let b=document.createElement('button');b.className='copy';b.textContent='Copy';b.addEventListener('click',async()=>{let t=pre.querySelector('code').textContent;try{await navigator.clipboard.writeText(t)}catch(e){let a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();document.execCommand('copy');a.remove()}b.textContent='Copied';setTimeout(()=>b.textContent='Copy',1500)});pre.prepend(b)});
+</script></body></html>

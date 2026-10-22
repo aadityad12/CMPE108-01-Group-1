@@ -1,0 +1,2 @@
+{"id":"team01-001","image":"images/team01-001.jpg","latex":"x ^ { 2 } + 1","writer_id":"team01","dataset":"team","official_split":"new","polarity":"dark_on_light","capture_session":"session01","expression_id":"formula001"}
+{"id":"team01-002","image":"images/team01-002.jpg","latex":"\\frac { a } { b }","writer_id":"team01","dataset":"team","official_split":"new","polarity":"dark_on_light","capture_session":"session01","expression_id":"formula002"}

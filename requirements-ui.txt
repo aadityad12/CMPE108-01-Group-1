@@ -1,0 +1,2 @@
+# Gradio is optional and can be installed after the training pipeline works.
+gradio==6.30.0

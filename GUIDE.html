@@ -1,0 +1,1795 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Write Like Me — beginner guide and all code</title><style>
+:root{font-size:17px;--ink:#182934;--muted:#526570;--brand:#096b70;--paper:#fff;--edge:#dce6e9}
+*{box-sizing:border-box}body{margin:0;background:#f3f6f5;color:var(--ink);font:1rem/1.65 system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+main{max-width:1100px;margin:30px auto;padding:48px 56px;background:var(--paper);border:1px solid var(--edge);border-radius:14px}
+header{border-bottom:3px solid var(--brand);padding-bottom:22px;margin-bottom:24px}h1{font-size:3.2rem;line-height:1.1;margin:.1em 0;color:var(--brand);letter-spacing:-.04em}
+.eyebrow{font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--brand)}.subtitle{font-size:1.3rem;color:var(--muted)}
+h2{font-size:1.55rem;line-height:1.3;margin-top:2.5rem;padding-top:16px;border-top:1px solid var(--edge);scroll-margin-top:90px}h3{font-size:1.1rem;color:var(--brand)}p{margin:.9em 0}
+nav{display:flex;gap:8px;flex-wrap:wrap;padding:12px 0}nav a{font-size:.78rem;padding:5px 9px;background:#eaf4f2;border-radius:5px;text-decoration:none}
+a{color:#066875;text-underline-offset:3px}strong{font-weight:700}li{margin:.5em 0;padding-left:4px}table{border-collapse:collapse;width:100%;font-size:.86rem;margin:1.2rem 0;line-height:1.5}
+th,td{text-align:left;vertical-align:top;padding:12px;border:1px solid var(--edge)}th{background:#e6f1ef;color:#16494d}tr:nth-child(even){background:#fafcfb}
+pre{position:relative;overflow:auto;background:#142b36;color:#eef8f6;padding:20px;border-radius:8px;font-size:.78rem;line-height:1.65;margin:1rem 0;white-space:pre}
+code{font: .88em ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}p code,li code,td code{background:#edf3f2;border-radius:3px;padding:1px 4px}pre code{font-size:1em;overflow-wrap:normal}
+details{border:1px solid var(--edge);border-radius:7px;padding:12px;margin:12px 0}summary{cursor:pointer;font-weight:650;color:var(--brand)}details pre{max-height:640px}
+.toolbar{position:sticky;top:0;background:#fffef9ed;backdrop-filter:blur(8px);z-index:3;padding:10px 18px;border-bottom:1px solid var(--edge);display:flex;gap:14px;justify-content:center;align-items:center;font-size:.8rem}
+button{font:inherit;cursor:pointer;border:1px solid #a9c5c7;border-radius:5px;background:#fff;color:var(--brand);padding:5px 10px}.copy{float:right;font-size:11px;margin:0 0 6px 12px;background:#234651;color:white;border:0}
+.equation{background:#f4f8f7;border:1px solid var(--edge);padding:16px;overflow:auto;border-radius:6px}math{font-size:1.2rem}.references{list-style:none;padding-left:0}.references li{padding:12px 0;border-bottom:1px solid var(--edge)}
+footer{font-size:.8rem;color:var(--muted);margin-top:40px;border-top:1px solid var(--edge);padding-top:16px}
+@media(max-width:760px){main{margin:0;padding:25px 18px;border:0;border-radius:0}h1{font-size:2.5rem}table{display:block;overflow-x:auto}.toolbar{justify-content:flex-start;flex-wrap:wrap}pre{font-size:.7rem}}
+@media print{body{background:white;font-size:10pt}main{max-width:none;margin:0;padding:0;border:0}.toolbar,nav,.copy,#code{display:none}h2{break-after:avoid}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f0f4f3;color:#172c31;border:1px solid #bfcfd0;font-size:8pt}a{color:inherit}tr,details{break-inside:avoid}details pre{max-height:none}header{break-after:avoid}}
+</style></head><body><div class="toolbar"><strong>Write Like Me · Guide</strong><label>Text size <input id="fontSize" type="range" min="13" max="23" value="17"></label><button onclick="window.print()">Print guide</button></div><main><header><p class="eyebrow">A beginner's implementation guide · 20 October 2026</p>
+<h1>Write Like Me</h1><p class="subtitle">Personalized handwritten math recognition with CoMER</p>
+<p>Prepared for Jeriel Zhi Hao Goh, Aidana Muralieva, and Aaditya Desi.</p>
+<p><strong>Your first goal:</strong> make the pretrained recognizer read one image. Then adapt it to one writer with ten labeled examples. Expand the experiment only after those two milestones work.</p></header>
+
+<nav><a href="#overview">Roadmap</a><a href="#concepts">Concepts</a><a href="#scope">Study design</a><a href="#setup">Setup</a><a href="#hpc">SJSU HPC</a><a href="#baseline">First prediction</a><a href="#data">Data</a><a href="#splits">Splits</a><a href="#domain">Phone adaptation</a><a href="#train">Personalization</a><a href="#evaluate">Evaluation</a><a href="#sweep">Full study</a><a href="#app">Gradio</a><a href="#report">Report</a><a href="#references">References</a><a href="#code">All code</a></nav>
+
+<section id="overview"><h2>1. Follow this order</h2>
+<table><tr><th>Stage</th><th>What you do</th><th>Why</th><th>Evidence that you can continue</th></tr>
+<tr><td>1</td><td>Run the original weights on one bundled image.</td><td>Establish that installation, checkpoint loading, and decoding work.</td><td>A plausible LaTeX prediction.</td></tr>
+<tr><td>2</td><td>Collect and label a small pilot; deliberately fit 5–10 training examples.</td><td>Find label, polarity, loss, and gradient problems cheaply.</td><td>Training loss falls; predictions on those training examples improve.</td></tr>
+<tr><td>3</td><td>Lock the writer evaluation protocol and measure the shared base.</td><td>Provide an honest comparison.</td><td>Fixed support/test files and saved base predictions.</td></tr>
+<tr><td>4</td><td>Compare decoder, full, and LoRA tuning on held-out images.</td><td>Test the actual research question.</td><td>Saved checkpoints, predictions, and per-writer metrics.</td></tr>
+<tr><td>5</td><td>Add phone-domain adaptation and larger writer cohorts.</td><td>Separate camera effects from handwriting effects.</td><td>Controlled comparisons with and without each stage.</td></tr>
+<tr><td>6</td><td>Build the Gradio demo; write the report from measured results.</td><td>Turn the findings into a usable demonstration.</td><td>A working adaptation flow and a reproducible report.</td></tr></table>
+<p><strong>Minimum defensible project:</strong> a shared CoMER base; a few genuinely unseen writers; fixed tests; all three adaptation methods; a sample-count curve; a general-recognition check; an error analysis; and a working demo. Three writers support an exploratory study, not a broad claim about all students. Approximately twenty eligible public writers is an expansion target, subject to a data audit.</p></section>
+
+<section id="concepts"><h2>2. Learn the small set of concepts you need</h2>
+<table><tr><th>Term</th><th>Meaning in your project</th></tr>
+<tr><td>Image and label</td><td>An image of an expression paired with its correct LaTeX, such as <code>x ^ { 2 } + 1</code>.</td></tr>
+<tr><td>Token / vocabulary</td><td>A token is one output unit: <code>x</code>, <code>^</code>, <code>{</code>, or <code>\frac</code>. The vocabulary lists units the model can output.</td></tr>
+<tr><td>Encoder</td><td>Converts the image into numerical visual features. CoMER uses a DenseNet encoder.</td></tr>
+<tr><td>Decoder</td><td>Predicts LaTeX tokens from those features. CoMER uses a Transformer decoder with coverage information [3].</td></tr>
+<tr><td>Pretrained weights / checkpoint</td><td>Parameters learned previously; a saved model file containing those parameters.</td></tr>
+<tr><td>Fine-tuning</td><td>Continue learning from an existing checkpoint using your data.</td></tr>
+<tr><td>LoRA adapter</td><td>Small trainable matrices that modify selected frozen weight matrices [5].</td></tr>
+<tr><td>Training / validation / test</td><td>Training updates weights. Validation selects settings/checkpoints. Test measures a final model after choices are fixed.</td></tr>
+<tr><td>Learning rate</td><td>How large each parameter update is. Too large can damage pretrained behavior.</td></tr>
+<tr><td>Batch / step / epoch</td><td>A batch is the examples used for one update; a step is one update; an epoch is one pass through a dataset. This starter samples batches and controls update steps explicitly.</td></tr>
+<tr><td>Seed</td><td>A number controlling random choices. Repeated seeds estimate sensitivity to initialization and sample ordering.</td></tr>
+<tr><td>Overfitting / forgetting</td><td>Overfitting is learning training examples without improving new ones. Forgetting is reduced general recognition after adaptation.</td></tr>
+<tr><td>Slurm / partition / GPU allocation</td><td>The HPC scheduler; a resource queue; and a reservation allowing your program to use a GPU.</td></tr></table>
+<p>Learn enough Python to understand lists, dictionaries, functions, loops, imports, file paths, and <code>with</code> blocks. Then learn tensors, <code>model.train()</code>, <code>model.eval()</code>, <code>loss.backward()</code>, and <code>optimizer.step()</code>. You can learn these while running the pilot; you do not need to master all of deep learning first.</p></section>
+
+<section id="scope"><h2>3. Turn the abstract into testable questions</h2>
+<ol><li><strong>Personalization:</strong> does adapting to writer <em>w</em> improve recognition on new expressions from that writer?</li>
+<li><strong>Sample efficiency:</strong> how does the improvement change at 10, 25, 50, and 100 labels?</li>
+<li><strong>Method:</strong> how do full, decoder, and LoRA tuning compare in accuracy, trainable parameters, storage, and time?</li>
+<li><strong>Generalization:</strong> what happens on a separate general test set while the personalized model is active?</li>
+<li><strong>Camera robustness:</strong> does shared phone-domain training help before writer personalization?</li></ol>
+<p><strong>Four corrections to make before promising the final experiment:</strong></p>
+<ul><li>CROHME 2023 combines several sources and modalities [6,7]. Verify writer metadata and usable per-writer counts in the exact files you receive. Do not infer people from arbitrary filename prefixes.</li>
+<li>Writer-disjoint support/test construction alone does not prove writers were unseen by the released pretrained checkpoint. Newly collected team handwriting gives you the clearest provenance. For public writers, compare documented identities against pretraining sources; if identities cannot be reconciled, describe pretraining writer overlap as unknown.</li>
+<li>The checkpoint filename's <code>0.6365</code> is a legacy validation statistic. The repository itself says its training-validation metric is not the official benchmark evaluator [8]. Measure your own baseline.</li>
+<li>HME100K expands beyond the CROHME vocabulary. The starter audits this and allows domain training on the supported-token subset. Report the retained count and exclusions. Training on the entire vocabulary would require an additional embedding/output-vocabulary migration.</li></ul>
+<p><strong>Recommended fixed protocol:</strong> reserve at least 150 distinct formulas per evaluation writer: 100 for a support pool, and 50 for a test set. Draw nested support prefixes of sizes 10, 25, 50, and 100. All methods and all seeds use the same prefixes and the same test set. Extra captures of a formula must not be counted as independent labels or split across support and test.</p>
+<p>Tune learning rate, update count, augmentation, and LoRA rank using separate <strong>development writers</strong>. Once fixed, evaluation writers supply only their stated support labels and an untouched test. A per-writer validation set would consume additional labels; do not quietly describe “10 labels” if you also use 20 labeled validation images. If only three team writers exist, use separate public development writers where possible, recruit another development writer, or label the study exploratory if settings were chosen using a team writer.</p>
+<p>Keep formula families and acquisition sessions documented. The starter prevents exact normalized formulas from crossing each writer's support/test boundary. It cannot automatically detect algebraically equivalent rewrites, near-duplicate camera frames, or unseen writer identity errors. Inspect contact sheets and metadata for those cases. Stronger splits can hold out template families or whole acquisition sessions.</p></section>
+
+<section id="setup"><h2>4. Set up your project</h2>
+<p><strong>Where:</strong> use your laptop to edit code, label images, and view plots. Use the HPC for repeated GPU training. Extract the ZIP. Every command below assumes your current directory is the extracted <code>write_like_me</code> directory. <code>cd</code> changes directories; <code>python -m wlm.train</code> runs the package's training module.</p>
+<p>Use a code editor such as VS Code if you already have one. Check these commands:</p>
+<pre><code>pwd
+ls
+git --version
+python --version
+command -v conda</code></pre>
+<p>If Conda is provided by the HPC, use that installation. Check <code>module avail</code> for available software. If you need your own Linux x86-64 Miniconda installation, obtain the installer from the official <a href="https://www.anaconda.com/docs/getting-started/installation">installation documentation</a>, verify its published SHA-256, then run the installer. A non-root installation can use:</p>
+<pre><code># Run only after downloading and verifying the official installer.
+bash Miniconda3-latest-Linux-x86_64.sh -b -p "$HOME/miniconda3"
+source "$HOME/miniconda3/etc/profile.d/conda.sh"</code></pre>
+<p>Choose one environment path. The Linux CPU path is useful for the first prediction:</p>
+<pre><code>conda create -n wlm python=3.10 -y
+conda activate wlm
+python -m pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+python -m pip install -r requirements-core.txt</code></pre>
+<p>For an HPC NVIDIA GPU environment, use this PyTorch installation instead of the CPU wheel [11]:</p>
+<pre><code>conda create -n wlm python=3.10 -y
+conda activate wlm
+python -m pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cu121
+python -m pip install -r requirements-core.txt</code></pre>
+<p>On a Mac, use <code>python -m pip install torch==2.5.1</code> without the Linux CPU-wheel index and run this starter with <code>--device cpu</code>. Training on your Mac is optional; the provided GPU instructions target the HPC.</p>
+<p>The starter uses a pinned, inspectable PyTorch port of the model modules. <code>bootstrap.py</code> fetches official CoMER at commit <code>ee15cdbe02467fd29f386fd554b4bc2185110fcc</code>, removes unused Lightning/data-module imports, and converts its checkpoint using restricted loading. It preserves the model architecture and bidirectional beam search. This is a new experimental runner, not a claim to reproduce the paper's full original training schedule. Do not mix the old repository requirements into this environment.</p>
+<pre><code>python bootstrap.py
+python -m unittest discover -s tests -v
+python -m pip freeze &gt; environment-lock.txt</code></pre>
+<p><strong>Expected:</strong> <code>checkpoints/base.pt</code>, downloaded source under <code>third_party/CoMER</code>, a recorded patch, and six passing tests. The converted checkpoint contains 6,389,041 model parameters. The source checkout and raw datasets are intentionally absent from the delivered ZIP; bootstrap obtains the source and weights from their owner.</p>
+<p>Keep experiment code in version control. The supplied ignore file excludes weights and data:</p>
+<pre><code>git init
+git add .
+git commit -m "Add CoMER personalization experiment starter"</code></pre></section>
+
+<section id="hpc"><h2>5. Connect to the SJSU HPC and reserve a GPU</h2>
+<p>The SJSU page describes an initial login through <code>coe-hpc1.sjsu.edu</code> and a hop to <code>coe-hpc3</code> [9]. Use your own SJSU account; your professor requests access if it is not active. Type these in your laptop terminal:</p>
+<pre><code>ssh YOUR_SJSU_ID@coe-hpc1.sjsu.edu
+# From that remote shell:
+ssh coe-hpc3</code></pre>
+<p>If the second hop fails on first access, follow the page's “First-Time Access to COE-HPC3” instructions. Preserve existing SSH keys. A separate key can be created with a new filename, added to <code>~/.ssh/authorized_keys</code> on the shared home, and selected using <code>ssh -i ~/.ssh/id_ed25519_wlm coe-hpc3</code>. Ask the HPC administrator if your account has a different onboarding arrangement.</p>
+<p>Inspect what the scheduler actually offers; the public page contains both older and newer examples:</p>
+<pre><code>hostname
+sinfo -o "%P %G %l %D"
+scontrol show partition gpu
+squeue -u "$USER"</code></pre>
+<p>Copy your extracted starter directory from your laptop; do this in a <strong>laptop terminal</strong>, not inside the HPC shell:</p>
+<pre><code>scp -r write_like_me YOUR_SJSU_ID@coe-hpc1.sjsu.edu:~/
+# Or copy only the downloaded ZIP, then unzip it on the HPC.</code></pre>
+<p>On the HPC, activate the GPU environment and request an interactive allocation for the pilot:</p>
+<pre><code>cd ~/write_like_me
+conda activate wlm
+srun --partition=gpu --gres=gpu:1 --nodes=1 --ntasks=1 \
+  --cpus-per-task=4 --mem=16G --time=00:20:00 --pty bash
+nvidia-smi
+python -c "import torch; print(torch.__version__); print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0))"</code></pre>
+<p><strong>Expected:</strong> a GPU node and CUDA available. The site lists P100, A100, and H100 resources; actual availability comes from the scheduler. CPU-only login nodes are for setup and small checks, and training belongs in allocations [9]. Exit the interactive allocation with <code>exit</code> when finished.</p>
+<p>For repeatable training, submit a job. Create the log directory <em>before</em> submission:</p>
+<pre><code>mkdir -p logs
+sbatch slurm/train.sbatch checkpoints/base.pt \
+  data/writers/ACTUAL_WRITER_FOLDER/adapt_10.jsonl runs/pilot
+squeue -u "$USER"
+tail -f logs/wlm-pilot-JOB_ID.out
+# If you need to stop your job:
+scancel JOB_ID
+# Afterward, if accounting is available:
+sacct -j JOB_ID --format=JobID,State,Elapsed,MaxRSS,AllocTRES</code></pre>
+<p>Replace uppercase placeholders with returned values. The job scripts assume <code>conda</code> is discoverable when a batch shell starts. If it is not, replace the <code>CONDA_BASE_DIR</code> assignment with your actual installation path, e.g. <code>CONDA_BASE_DIR="$HOME/miniconda3"</code>. Keep the requested resources modest until you measure memory and runtime.</p>
+<details><summary>Optional container route</summary>
+<p>SJSU documents Singularity; some installations use its successor Apptainer. The included <code>Singularity.def</code> is a build recipe. It does not assume you have Docker privileges on the cluster. Build the image on a supported builder if HPC unprivileged/fakeroot builds are unavailable, then copy <code>wlm.sif</code> to the HPC.</p>
+<pre><code>module load singularity
+# Only where building from a definition file is supported:
+singularity build --fakeroot wlm.sif Singularity.def
+# Run inside a Slurm GPU allocation; source/data remain in your bound project:
+singularity exec --nv --bind "$PWD:/project" --pwd /project \
+  wlm.sif python bootstrap.py
+singularity exec --nv --bind "$PWD:/project" --pwd /project \
+  wlm.sif python -m wlm.train --base checkpoints/base.pt \
+  --manifest data/writers/ACTUAL_WRITER_FOLDER/adapt_10.jsonl \
+  --output runs/container_pilot --method decoder --steps 200 --device cuda</code></pre>
+<p><code>--nv</code> exposes the allocated NVIDIA device and host driver libraries [12]. A container still needs a compatible host GPU driver. The container recipe and cluster commands have not been run on your SJSU account.</p></details></section>
+
+<section id="baseline"><h2>6. Make the first prediction</h2>
+<pre><code>python -m wlm.predict image \
+  --checkpoint checkpoints/base.pt \
+  --image third_party/CoMER/example/UN19_1041_em_595.bmp \
+  --polarity light_on_dark --device cpu</code></pre>
+<p>The preparation run produced:</p>
+<pre><code>x ^ { 2 } = \sum \limits _ { a = 1 } ^ { 3 } x _ { a } ^ { 2 }</code></pre>
+<p>For a phone photo, crop tightly around one complete expression, keep all fraction bars and superscripts, and use:</p>
+<pre><code>python -m wlm.predict image --checkpoint checkpoints/base.pt \
+  --image data/my_expression.jpg --polarity dark_on_light --device cuda</code></pre>
+<p><strong>Why polarity matters:</strong> the bundled images have white ink on black. A normal photograph has dark ink on light paper. The code uses explicit manifest polarity to convert them to the expected representation. It keeps the aspect ratio, limits dimensions to 1024 × 256, and pads very small images. It never stretches a fraction to a square.</p></section>
+
+<section id="data"><h2>7. Obtain, label, and audit the data</h2>
+<p><strong>One shared format:</strong> every dataset becomes JSON Lines: one JSON object per expression. Image paths can be absolute or relative to the manifest. The example file illustrates syntax; replace its placeholder image paths.</p>
+<pre><code>{"id":"team01-001","image":"images/team01-001.jpg","latex":"x ^ { 2 } + 1","writer_id":"team01","dataset":"team","official_split":"new","polarity":"dark_on_light"}</code></pre>
+<p>Backslashes in JSON strings need escaping: LaTeX <code>\frac</code> is written <code>"\\frac"</code>. Do not include rendered dollar delimiters in the label; the tokenizer tolerates a paired outer delimiter but labels should remain consistent. The label describes what is written, even if the mathematical equation is false.</p>
+<h3>Team handwriting: start here</h3>
+<ol><li>Choose prompt expressions with short arithmetic, letters, fractions, exponents, subscripts, radicals, sums, and a range of lengths. Check tokens against <code>third_party/CoMER/comer/datamodule/dictionary.txt</code>.</li>
+<li>Start with a 10-expression pilot. For final curves, aim for 150–200 <em>distinct</em> labeled formulas per evaluation writer. At least 150 are needed for the default 100-support/50-test protocol.</li>
+<li>Write each expression naturally. Photograph in at least two sessions; record phone, lighting, date/session, writer ID, and formula ID. If all writers use one camera in one condition, describe that limitation.</li>
+<li>Crop each expression. Have one teammate label and another verify every LaTeX string against the photo. Keep a correction log. Avoid color markup and complicated macros outside the vocabulary.</li>
+<li>Write <code>data/team.jsonl</code>. IDs such as <code>team01</code> are enough; real names are unnecessary. Retain the originals privately and agree on permission to use the handwriting in the report/demo.</li></ol>
+<p><strong>CROHME 2023:</strong> download <code>CROHME23.zip</code> from <a href="https://zenodo.org/records/8428035">the official record</a> and inspect its README, nested archives, modalities, and metadata. Use the provided offline images when available. The starter joins image stems to InkML labels; it deliberately rejects ambiguous matches. Run it on one actual source/split directory at a time, and give globally distinct dataset/site names where writer IDs may be local:</p>
+<pre><code>python -m wlm.prepare crohme \
+  --inkml data/raw/CROHME/ACTUAL_INKML_DIRECTORY \
+  --images data/raw/CROHME/ACTUAL_IMAGE_DIRECTORY \
+  --dataset CROHME23_SITE_NAME --split train \
+  --polarity dark_on_light --output data/crohme_site.jsonl
+# If writer identities are in a separate documented mapping:
+# add --writer-map data/verified_writer_map.csv</code></pre>
+<p>Set polarity by viewing actual images. The importer reads top-level truth/LaTeX and writer/writerID annotations when present. A writer CSV maps the relative InkML path or stem to the verified person. See <code>examples/writer_map.csv</code>. It preserves unknown IDs as null. It does not render bare traces, invent writer IDs, or assume every subset has labels. If you have only InkML, use the organizers' CROHMElib referenced in the record, or obtain matching offline images before importing [7].</p>
+<p><strong>HME100K:</strong> request/download through the official site linked from <a href="https://github.com/Phymond/HME100K">its repository</a>. Do not delay the team pilot while access is pending. The repository describes train/test image folders and label text files [10]. After access:</p>
+<pre><code>python -m wlm.prepare hme100k \
+  --labels data/raw/HME100K/train/train_labels.txt \
+  --images data/raw/HME100K/train/train_images --split train \
+  --output data/hme_train_raw.jsonl
+python -m wlm.prepare audit --manifest data/hme_train_raw.jsonl \
+  --output data/hme_train_audit.json --filtered data/hme_train_supported.jsonl
+python -m wlm.prepare domain-split --manifest data/hme_train_supported.jsonl \
+  --output data/domain</code></pre>
+<p>The domain split groups identical tokenized formulas and takes validation only from the official training partition. HME100K writer IDs are not invented. Without documented identities, neither writer-disjoint internal splitting nor HME-to-CROHME writer disjointness is established; disclose that. Keep the official HME100K test partition out of model selection.</p>
+<p>Audit every new manifest:</p>
+<pre><code>python -m wlm.prepare audit --manifest data/team.jsonl \
+  --output data/team_audit.json</code></pre>
+<p>The audit reports writer counts, unknown tokens, duplicate image bytes/IDs, missing or unreadable images, and labels beyond the 198-token training limit. Use <code>--filtered</code> only for a declared training subset. <strong>Do not silently filter test images based on model vocabulary.</strong> Test decoding retains OOV labels, so limitations remain visible. The tokenizer treats braces and structural commands as tokens; it does not prove that two different LaTeX strings are semantically equivalent.</p>
+<p>Keep a dataset log: source URL, download date, archive hash, permitted usage, image/label counts, modalities, writer coverage, and exclusions. Recheck the downloaded CROHME license and obtain HME100K usage terms; the pinned CoMER tree has no license file. This starter excludes their source/data/weights from redistribution and does not treat coursework as an explicit usage grant.</p></section>
+
+<section id="splits"><h2>8. Freeze the writer splits and record the base</h2>
+<pre><code>python -m wlm.prepare writer-splits --manifest data/team.jsonl \
+  --output data/writers --seed 42
+cat data/writers/split_report.json</code></pre>
+<p>For each eligible writer, the report gives an actual folder containing <code>adapt_10.jsonl</code>, <code>adapt_25.jsonl</code>, <code>adapt_50.jsonl</code>, <code>adapt_100.jsonl</code>, and <code>test.jsonl</code>. A hash suffix avoids writer-folder name collisions. Writers with fewer than 150 unique normalized formulas are marked insufficient rather than being padded with repeated samples.</p>
+<pre><code>python -m wlm.leakage \
+  --left data/writers/ACTUAL_WRITER_FOLDER/adapt_100.jsonl \
+  --right data/writers/ACTUAL_WRITER_FOLDER/test.jsonl \
+  --require-formula-disjoint
+python -m wlm.predict evaluate --checkpoint checkpoints/base.pt \
+  --manifest data/writers/ACTUAL_WRITER_FOLDER/test.jsonl \
+  --output runs/study/base/ACTUAL_WRITER_FOLDER --kind writer --as-base --device cuda</code></pre>
+<p>Repeat the base evaluation once per writer, using the exact shared checkpoint you will personalize. The original <code>base.pt</code> is one option; the phone-adapted <code>runs/domain/best.pt</code> is another. <code>--as-base</code> labels either shared starting model correctly for the analysis script.</p>
+<p>For general recognition, export the bundled CROHME 2019 images/labels:</p>
+<pre><code>python -m wlm.prepare upstream --split 2019 --output data/general_2019.jsonl
+python -m wlm.predict evaluate --checkpoint checkpoints/base.pt \
+  --manifest data/general_2019.jsonl --output runs/study/base/general \
+  --kind general --as-base --device cuda</code></pre>
+<p>These exported rows have unknown writer IDs and cannot support a writer-disjoint claim. The released checkpoint's previous model-selection exposure to legacy benchmark data may also be incomplete; label the results as retention on this reference benchmark. For a stronger untouched general test, obtain provenance-confirmed new data and lock it before tuning. Exclude any public target-writer support examples from the general test. Newly collected team adaptation images do not belong to the old bundled test.</p></section>
+
+<section id="domain"><h2>9. Add shared phone-domain training after the pilot works</h2>
+<p><strong>Purpose:</strong> teach one shared model to handle camera conditions before tailoring separate copies to writers. This is distinct from personalization. Keep a frozen copy of both the original and phone-adapted bases.</p>
+<pre><code>python -m wlm.train --base checkpoints/base.pt \
+  --manifest data/domain/train.jsonl --val data/domain/val.jsonl \
+  --method full --lr 0.00001 --steps 2000 --batch-size 4 \
+  --augment --output runs/domain --device cuda</code></pre>
+<p>This is an initial budget, not a recommended final convergence claim. At batch size 4, 2,000 updates sample about 8,000 image presentations, much less than one full pass through approximately 74,000 examples. Inspect the validation-loss curve and recognition on development data, then choose a sufficient schedule. The best validation-loss checkpoint is <code>runs/domain/best.pt</code>; <code>model.pt</code> is the latest resumable state. Selection uses validation loss in this starter; test recognition remains held out.</p>
+<p>Training-only augmentations include mild blur, an illumination gradient, and small perspective changes. They are intentionally modest starting settings. Visually inspect a few transformed images so minus signs and radical bars remain readable. No augmentation is applied during test decoding. The exact augmentation policy is part of the experiment, not an assumed universal improvement.</p>
+<p>Compare original CoMER versus the phone-adapted base on the same development and final test data. If HME100K remains inaccessible, continue the core writer study and optionally use augmentation on an approved writer-disjoint public training pool. State the resulting scope accurately; synthetic distortions are not evidence that HME100K training occurred.</p></section>
+
+<section id="train"><h2>10. Run the three personalization methods</h2>
+<p>Use the same base, support labels, decoding settings, and test images for every method. The following defaults are starting points to select using development writers:</p>
+<table><tr><th>Method</th><th>Updates</th><th>Initial learning rate</th><th>What learns</th></tr>
+<tr><td>full</td><td>200</td><td>0.00001</td><td>All model parameters; BatchNorm running statistics stay frozen.</td></tr>
+<tr><td>decoder</td><td>200</td><td>0.00005</td><td>Decoder parameters. Encoder weights, running statistics, and encoder dropout stay fixed.</td></tr>
+<tr><td>lora</td><td>200</td><td>0.001</td><td>Rank-8 LoRA updates in six decoder feed-forward layers; 61,440 trainable parameters.</td></tr></table>
+<p>The LoRA targets are <code>decoder.model.layers.{0,1,2}.linear{1,2}</code>. CoMER uses custom attention projection tensors; a generic Hugging Face <code>q_proj/v_proj</code> recipe would not find those modules. This implementation uses clearly declared FFN LoRA, not attention Q/V LoRA. It saves only adapter matrices plus resumable training state and checks the exact base hash on reload.</p>
+<pre><code>python -m wlm.train --base checkpoints/base.pt \
+  --manifest data/writers/ACTUAL_WRITER_FOLDER/adapt_10.jsonl \
+  --method decoder --steps 200 --batch-size 4 --seed 0 \
+  --output runs/pilot_decoder --device cuda
+
+python -m wlm.train --base checkpoints/base.pt \
+  --manifest data/writers/ACTUAL_WRITER_FOLDER/adapt_10.jsonl \
+  --method full --steps 200 --batch-size 4 --seed 0 \
+  --output runs/pilot_full --device cuda
+
+python -m wlm.train --base checkpoints/base.pt \
+  --manifest data/writers/ACTUAL_WRITER_FOLDER/adapt_10.jsonl \
+  --method lora --steps 200 --batch-size 4 --seed 0 \
+  --output runs/pilot_lora --device cuda</code></pre>
+<p>Replace the base path consistently with the phone-adapted shared model once selected. Each run saves <code>config.json</code>, <code>loss.jsonl</code>, and <code>model.pt</code>. Configuration records manifest/base hashes, trainable parameters, seed, elapsed training time, and CUDA peak allocated memory. The latest state is overwritten atomically every 50 updates so an interrupted job loses at most the unsaved interval.</p>
+<pre><code># Continue the same run to a larger total update count:
+python -m wlm.train --base checkpoints/base.pt \
+  --manifest data/writers/ACTUAL_WRITER_FOLDER/adapt_10.jsonl \
+  --method decoder --steps 400 --batch-size 4 --seed 0 \
+  --output runs/pilot_decoder --resume runs/pilot_decoder/model.pt --device cuda</code></pre>
+<p><strong>Training sanity check:</strong> first try intentionally fitting a few support examples and decode those same examples. Falling loss alone does not prove generalization, but failure to learn the tiny support set is a debugging signal. This diagnostic is not a paper test result.</p>
+<p><strong>Fairness:</strong> 200 steps × batch 4 gives 800 sampled presentations for every sample budget: roughly 80 presentations per example at k=10 and 8 at k=100. This controls update budget; it does not control epochs. Report that choice. If you choose budget-specific update counts, select them on development writers and predeclare them. Never adapt writer B starting from writer A's personalized model.</p></section>
+
+<section id="evaluate"><h2>11. Evaluate new expressions and general retention</h2>
+<pre><code>python -m wlm.predict evaluate --checkpoint runs/pilot_lora/model.pt \
+  --manifest data/writers/ACTUAL_WRITER_FOLDER/test.jsonl \
+  --output runs/pilot_lora/writer --kind writer --device cuda
+python -m wlm.predict evaluate --checkpoint runs/pilot_lora/model.pt \
+  --manifest data/general_2019.jsonl \
+  --output runs/pilot_lora/general --kind general --device cuda</code></pre>
+<p><strong>Why:</strong> support-set accuracy measures memorization; held-out writer accuracy measures useful adaptation. General-set accuracy measures interference when that personalized model is active. Switching off an isolated LoRA adapter restores the base, but the active adapter can still hurt unrelated writers.</p>
+<table><tr><th>Metric</th><th>Definition</th></tr>
+<tr><td>Exact token expression match</td><td>Fraction with zero token insertions, deletions, or substitutions after conservative tokenization.</td></tr>
+<tr><td>Within 1 / 2 token errors</td><td>Fraction with token Levenshtein distance ≤ 1 / ≤ 2; includes exactly correct predictions.</td></tr>
+<tr><td>Mean edit distance</td><td>Average minimum token edit count.</td></tr>
+<tr><td>Mean normalized edit distance</td><td>Average ED / max(reference length, prediction length, 1), between 0 and 1.</td></tr>
+<tr><td>Token error rate</td><td>Total ED divided by total reference-token count; can exceed 1.</td></tr>
+<tr><td>Writer-macro exact accuracy</td><td>Compute each writer's exact accuracy first, then average writers equally.</td></tr>
+<tr><td>Forgetting in percentage points</td><td>100 × (shared-base general accuracy − adapted-model general accuracy). Positive means a drop.</td></tr></table>
+<p><strong>Terminology matters:</strong> a LaTeX brace is a token but not a handwritten symbol. These “within 1/2” metrics are token-error tolerances, not official CROHME symbol/structure-error scores. To claim the latter, run the organizers' LaTeX-to-SymLG and Lgeval pipeline referenced by the CoMER repository. The project's own metrics should retain their explicit names. Different valid LaTeX serializations may still score differently.</p>
+<p>Prediction files include ground truth, prediction, edit distance, writer ID, and categories for fractions, superscripts, radicals, and expressions of at least 50 tokens. Categories overlap and are descriptive, not a complete structural evaluator. Examine at least 20–30 changed cases manually, including improvements and regressions, using the image and the two predictions. Count actual symbol substitutions such as <code>1/l</code> or <code>x/×</code> separately from lost braces and layout mistakes.</p>
+<p>Use the same beam size throughout final comparisons. The checkpoint default is 10. <code>--beam-size 2 --limit 5</code> is useful only for a quick pipeline check. Limited evaluations are marked and excluded by the analysis script. A model selected on test performance is no longer honestly evaluated by that same test.</p></section>
+
+<section id="sweep"><h2>12. Scale the study only after timing the pilot</h2>
+<p>For 20 public writers plus 3 team writers, 3 methods × 4 budgets × 3 seeds = <strong>828 adaptation runs</strong>. Twenty writers alone gives 720. This excludes development tuning, shared domain training, base evaluations, and decoding time. If a complete run takes t minutes, 828 runs need approximately 828t/60 GPU-hours before queue delays. Measure t; do not assume a duration.</p>
+<p>Start with one writer, then the three team writers. A useful staged plan is one seed for all methods/budgets, then three seeds on the finalized design. If resources are tight, reduce the declared cohort or scope and discuss it. Do not select only writers that improved.</p>
+<pre><code>python -m wlm.sweep plan --splits data/writers --base checkpoints/base.pt \
+  --output runs/study/personal --jobs jobs.jsonl --steps 200 \
+  --seeds 0,1,2 --general data/general_2019.jsonl
+wc -l jobs.jsonl
+# Read the plan before submitting. Run the first entry interactively as a pilot:
+python -m wlm.sweep run --jobs jobs.jsonl --index 0 --device cuda
+# Example for exactly 828 entries; substitute the actual last index printed above:
+mkdir -p logs
+sbatch --array=0-827%2 slurm/sweep.sbatch jobs.jsonl</code></pre>
+<p><code>%2</code> limits the array to two simultaneous tasks [13]. Use cluster policy and measured memory/runtime to choose concurrency and job limits. The job plan stores input hashes; changed manifests or bases cause a failure instead of silently altering the experiment. A completed training checkpoint is reused/resumed, but evaluation may rerun after a job restart.</p>
+<p>Check disk space with <code>df -h .</code> and your account quota with <code>quota -s</code> if supported. The checked two-step checkpoints were approximately 75 MiB for full tuning, 50 MiB for decoder tuning, and 0.73 MiB for LoRA, including optimizer state. At 276 runs per method, retaining one checkpoint per run requires roughly 34 GiB before datasets, plots, and shared-domain checkpoints. Measure your files and plan storage before scaling.</p>
+<p>Keep all base and adaptation evaluations for one shared base under the same analysis root. Put comparisons using another shared base under a different root. After the required jobs finish:</p>
+<pre><code>python -m pip install -r requirements-analysis.txt
+python -m wlm.analyze --root runs/study --output results/study</code></pre>
+<p>Outputs are <code>per_run.csv</code>, <code>summary.csv</code>, <code>forgetting.csv</code> when available, and <code>learning_curve.png</code>. The script averages seeds within a writer before bootstrapping writers and computes paired gains against that writer's identical base test. Three seeds are not three independent writers. Confidence intervals with only three writers are unstable; describe them cautiously. Complete a balanced set of seeds and writers before comparing curves.</p>
+<p><strong>Recommended additional control:</strong> for a target writer, adapt a fresh copy to k examples from a different, genuinely unrelated writer and evaluate on the same target test. Prefer matched prompts and capture conditions. Compare this with same-writer adaptation using the same method/update budget. If both improve similarly, some benefit may reflect extra domain/task training rather than handwriting specificity. Keep controls in a separately labeled result root.</p>
+<p>To isolate camera effects, compare the original and phone-adapted bases. To isolate augmentation, repeat a small locked development comparison with it enabled/disabled. Do not launch every possible combination before the core question is answered.</p></section>
+
+<section id="app"><h2>13. Launch the Gradio application</h2>
+<p>Choose the method using development accuracy and practical cost; use the final test only to report it. The supplied application supports any of the three methods through its startup flag:</p>
+<pre><code>python -m pip install -r requirements-ui.txt
+python app.py --base checkpoints/base.pt --method lora --steps 200 --device cpu
+# On an allocated GPU node, use --device cuda.</code></pre>
+<ol><li>Upload 10–100 cropped photos.</li><li>Paste one label per image using <code>filename[TAB]LaTeX</code>, with an actual tab character.</li><li>Click “Adapt recognizer.” The application trains a separate session checkpoint.</li><li>Upload a new expression in the recognition tab; compare its LaTeX with what you wrote.</li></ol>
+<p>The app starts at <code>http://127.0.0.1:7860</code> and does not create a public share link. Its adaptation flow uses the same training code; it is a small single-session demonstration, not a multi-user training service. Session uploads are temporary and their image paths may disappear after the app stops. Preserve your research manifests and images outside the UI.</p>
+<p><strong>Showing an HPC demo:</strong> launch inside a GPU allocation, note <code>hostname</code>, and forward your laptop's port through the login/jump chain. An OpenSSH example, run on your laptop, is:</p>
+<pre><code>ssh -N -L 7860:localhost:7860 \
+  -J YOUR_SJSU_ID@coe-hpc1.sjsu.edu,YOUR_SJSU_ID@coe-hpc3 \
+  YOUR_SJSU_ID@ACTUAL_ALLOCATED_GPU_NODE</code></pre>
+<p>Then open <code>http://localhost:7860</code> on your laptop. This assumes SSH to the allocated node is allowed; otherwise use the administrator's documented tunnel path. The SJSU page also describes two-stage tunnels. If you download a LoRA checkpoint to another machine, preserve the exact shared base and pass <code>--base-override /path/to/base.pt</code> to prediction commands. The stored hash verifies that it matches.</p>
+<p>Test the UI before the presentation: original model recognition, successful adaptation, new-image recognition, a missing-label error, a duplicate filename error, and an unsupported token error. Record adaptation latency on the actual demonstration machine.</p></section>
+
+<section id="math"><h2>14. Write the technical approach with the right mathematics</h2>
+<p>Let x be an expression image and y = (y₁,…,yT) its LaTeX token sequence. An autoregressive recognizer models:</p>
+<div class="equation"><math display="block"><mrow><msub><mi>p</mi><mi>θ</mi></msub><mo>(</mo><mi>y</mi><mo>|</mo><mi>x</mi><mo>)</mo><mo>=</mo><munderover><mo>∏</mo><mrow><mi>t</mi><mo>=</mo><mn>1</mn></mrow><mi>T</mi></munderover><msub><mi>p</mi><mi>θ</mi></msub><mo>(</mo><msub><mi>y</mi><mi>t</mi></msub><mo>|</mo><msub><mi>y</mi><mrow><mo>&lt;</mo><mi>t</mi></mrow></msub><mo>,</mo><mi>x</mi><mo>)</mo></mrow></math></div>
+<p>The teacher-forced training objective is negative log likelihood (cross entropy):</p>
+<div class="equation"><math display="block"><mrow><mi>ℒ</mi><mo>(</mo><mi>θ</mi><mo>)</mo><mo>=</mo><mo>−</mo><mfrac><mn>1</mn><mi>N</mi></mfrac><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>N</mi></munderover><munderover><mo>∑</mo><mrow><mi>t</mi><mo>=</mo><mn>1</mn></mrow><msub><mi>T</mi><mi>i</mi></msub></munderover><mi>log</mi><msub><mi>p</mi><mi>θ</mi></msub><mo>(</mo><msub><mi>y</mi><mrow><mi>i</mi><mo>,</mo><mi>t</mi></mrow></msub><mo>|</mo><msub><mi>y</mi><mrow><mi>i</mi><mo>,</mo><mo>&lt;</mo><mi>t</mi></mrow></msub><mo>,</mo><msub><mi>x</mi><mi>i</mi></msub><mo>)</mo></mrow></math></div>
+<p>The implementation trains both left-to-right and right-to-left sequences with the official token-building utility, ignores padding in the loss, and averages over nonpadding output tokens. Thus the displayed expression gives the basic likelihood objective; the implemented loss includes both directions. Test decoding uses the official bidirectional beam search without ground-truth prefixes.</p>
+<p>Write θ = (θencoder, θdecoder). Full tuning optimizes both groups. Decoder tuning optimizes only θdecoder. All personalization runs in this starter hold BatchNorm running statistics fixed.</p>
+<p>For LoRA, a frozen matrix W₀ ∈ ℝ<sup>dout × din</sup> becomes W₀ + (α/r)BA, with A ∈ ℝ<sup>r × din</sup>, B ∈ ℝ<sup>dout × r</sup>. The forward map is h = W₀z + (α/r)BAz. Only A and B learn. One matrix needs r(din+dout) trainable parameters instead of din·dout. Here r=8 and α=16, targeting six decoder FFN matrices. B starts at zero, making the adapter initially equivalent to the shared base [5].</p>
+<p>Describe the optimizer (AdamW), clipping threshold (1.0), update budget, mini-batch sampling, trainable modules, image transforms, seed, and beam search. A theoretical-results section is optional for this empirical project. Explain design choices and limitations instead of inventing a theorem.</p></section>
+
+<section id="report"><h2>15. Assemble the report and divide the work</h2>
+<table><tr><th>Required section</th><th>What belongs there</th></tr>
+<tr><td>Introduction</td><td>The writer-style/camera problem, why general accuracy can hide individual failures, your personalization question, and a short contribution list.</td></tr>
+<tr><td>Background / related work</td><td>Synthesize at least five eligible papers. Explain how WAP, BTTR, CoMER, SAN, LoRA, and CROHME motivate different pieces. Confirm they are outside your class reading list.</td></tr>
+<tr><td>Technical approach</td><td>Architecture, likelihood objective, bidirectional training, three parameter-update schemes, LoRA equation/targets, preprocessing, and the evaluation protocol.</td></tr>
+<tr><td>Experimental results</td><td>Actual usable counts; provenance; split rules; hyperparameters; base comparison; writer learning curves; macro/micro results; uncertainty; time/memory/storage; forgetting; error examples.</td></tr>
+<tr><td>Conclusion</td><td>What improved, who benefited, what did not improve, limitations of writer count/capture diversity/vocabulary, and next steps.</td></tr>
+<tr><td>IEEE references</td><td>Use the bibliography below; cite the exact code/data versions and access date separately. Remove papers you do not discuss.</td></tr></table>
+<p>Suggested figures/tables: a pipeline diagram; dataset/provenance table; macro exact accuracy versus k with a shared-base line; method cost table; forgetting table; and a few paired image/base/adapted predictions. Every plot needs axis units, sample counts, a caption, and the evaluation split. Fill values only after experiments; a negative result is still a result.</p>
+<table><tr><th>Person</th><th>Suggested ownership</th><th>Deliverable</th></tr>
+<tr><td>Jeriel</td><td>Model setup and training</td><td>Reproducible base, method implementation, HPC jobs.</td></tr>
+<tr><td>Aidana</td><td>Data and protocol</td><td>Verified labels, writer metadata, immutable splits, dataset audit.</td></tr>
+<tr><td>Aaditya</td><td>Evaluation and demo</td><td>Metrics/plots, error review, Gradio demonstration.</td></tr></table>
+<p>This is a proposed division, not an assumption about teammates' experience. All three should be able to explain the data split, trainable parameters, and one recognition failure. Review one another's labels and code.</p>
+<p>A flexible six-week order: week 1 setup and baseline; week 2 data audit and split freeze; week 3 pilot and development tuning; week 4 finalized experiments; week 5 error/retention analysis and demo; week 6 report and presentation. Adjust to the course deadline. Keep a small working result at each stage.</p></section>
+
+<section id="troubleshooting"><h2>16. Troubleshooting and completion checks</h2>
+<table><tr><th>Symptom</th><th>Next action and reason</th></tr>
+<tr><td>CUDA is false</td><td>Check that you are inside an allocated GPU node and installed a CUDA wheel. Use <code>--device cpu</code> for a small diagnostic.</td></tr>
+<tr><td>Driver / unsupported kernel error</td><td>Record <code>nvidia-smi</code> and PyTorch version. CUDA 11.8 is an alternative published wheel for PyTorch 2.5.1; choose it if the host driver requires it. Rerun inference and gradient tests after changing environments.</td></tr>
+<tr><td>Out of GPU memory</td><td>Use batch size 1 or 2 and inspect unusually large images. Keep decoding batch size 1. More CPU RAM does not increase GPU memory.</td></tr>
+<tr><td>Unknown token / KeyError</td><td>Audit labels against the vocabulary. Correct genuine labeling errors; declare filtering for domain training; retain unknown-token test cases in reported scope.</td></tr>
+<tr><td>Model never learns the tiny support set</td><td>View transformed images, confirm colors, inspect labels and trainable parameter count, and verify nonzero gradients.</td></tr>
+<tr><td>Support improves but test worsens</td><td>Likely overfitting. Revisit learning rate/update counts/regularization on development writers, then rerun a locked protocol.</td></tr>
+<tr><td>LoRA finds no targets</td><td>Use the pinned source and declared FFN paths. Do not use generic Q/V module names for this custom model.</td></tr>
+<tr><td>Adapter cannot find base</td><td>Use the exact shared base and <code>--base-override</code> after relocating files. A hash mismatch means the base differs.</td></tr>
+<tr><td>Slurm log missing</td><td>Create <code>logs/</code> before submission and verify your working directory and job state.</td></tr>
+<tr><td>CROHME has no writer IDs / too few samples</td><td>Use verified mapping files or organizer assistance. Keep the team study running; reduce public-writer scope explicitly rather than assigning false IDs.</td></tr></table>
+<p><strong>Done means:</strong> a reproducible environment and source pin; a working baseline; audited labels and writer provenance; fixed disjoint support/test examples; development-only tuning; each declared method/budget measured; saved predictions and real plots; a general-set retention comparison; a functioning adaptation UI; and a report whose claims match the data actually collected.</p>
+<p>The supplied code was exercised on CPU; see <a href="VALIDATION.html">VALIDATION.html</a> for exact checks. No SJSU login, private dataset download, scientific training study, or writer-level accuracy claim was performed on your behalf.</p></section>
+
+<section id="references"><h2>References and further reading</h2>
+<p>The first six entries are conference or journal papers. They satisfy the format/category requirement only if they are outside your class readings. Read them; do not cite this guide as a substitute.</p>
+<ol class="references">
+<li>[1] J. Zhang <em>et al.</em>, “Watch, attend and parse: An end-to-end neural network based approach to handwritten mathematical expression recognition,” <em>Pattern Recognition</em>, vol. 71, pp. 196–206, 2017, doi: <a href="https://doi.org/10.1016/j.patcog.2017.06.017">10.1016/j.patcog.2017.06.017</a>. <strong>Read for:</strong> image-to-sequence recognition and visual attention.</li>
+<li>[2] W. Zhao, L. Gao, Z. Yan, S. Peng, L. Du, and Z. Zhang, “Handwritten mathematical expression recognition with bidirectionally trained Transformer,” in <em>Proc. ICDAR</em>, 2021, pp. 570–584, doi: <a href="https://doi.org/10.1007/978-3-030-86331-9_37">10.1007/978-3-030-86331-9_37</a>. <strong>Read for:</strong> the bidirectional decoder underlying CoMER.</li>
+<li>[3] W. Zhao and L. Gao, “CoMER: Modeling coverage for Transformer-based handwritten mathematical expression recognition,” in <em>Proc. ECCV</em>, 2022, pp. 392–408, doi: <a href="https://doi.org/10.1007/978-3-031-19815-1_23">10.1007/978-3-031-19815-1_23</a>. <a href="https://www.ecva.net/papers/eccv_2022/papers_ECCV/papers/136880389.pdf">Open paper</a>. <strong>Read for:</strong> attention coverage and your base model.</li>
+<li>[4] Y. Yuan <em>et al.</em>, “Syntax-aware network for handwritten mathematical expression recognition,” in <em>Proc. IEEE/CVF CVPR</em>, 2022, pp. 4553–4562. <a href="https://openaccess.thecvf.com/content/CVPR2022/html/Yuan_Syntax-Aware_Network_for_Handwritten_Mathematical_Expression_Recognition_CVPR_2022_paper.html">Paper</a>. <strong>Read for:</strong> HME100K and why syntax/structure needs separate attention.</li>
+<li>[5] E. J. Hu <em>et al.</em>, “LoRA: Low-rank adaptation of large language models,” in <em>Proc. ICLR</em>, 2022. <a href="https://www.microsoft.com/en-us/research/publication/lora-low-rank-adaptation-of-large-language-models/">Author publication page</a>. <strong>Read for:</strong> low-rank parameter updates; your study tests their transfer to this vision recognizer.</li>
+<li>[6] Y. Xie <em>et al.</em>, “ICDAR 2023 CROHME: Competition on recognition of handwritten mathematical expressions,” in <em>Proc. ICDAR</em>, 2023, pp. 553–565, doi: <a href="https://doi.org/10.1007/978-3-031-41679-8_33">10.1007/978-3-031-41679-8_33</a>. <strong>Read for:</strong> dataset composition and official evaluation.</li>
+</ol>
+<p>[7] <a href="https://zenodo.org/records/8428035">CROHME 2023 official data record</a>, doi: 10.5281/zenodo.8428035. [8] <a href="https://github.com/Green-Wood/CoMER">Official CoMER code</a>, pinned commit stated above. [9] <a href="https://www.sjsu.edu/cmpe/resources/hpc.php">SJSU College of Engineering HPC instructions</a>. [10] <a href="https://github.com/Phymond/HME100K">Official HME100K repository</a>. [11] <a href="https://docs.pytorch.org/get-started/previous-versions/">PyTorch previous-version installation commands</a>. [12] <a href="https://apptainer.org/docs/user/latest/gpu.html">Apptainer GPU guide</a>. [13] <a href="https://slurm.schedmd.com/job_array.html">Slurm job arrays</a>. Online resources checked 20 October 2026.</p>
+</section>
+<section id="code"><h2>Complete code appendix</h2><p>Every file below is included separately in the ZIP. Expand a file to inspect or copy it. Downloaded third-party source, weights, and datasets are obtained through the setup commands and are not bundled.</p><details><summary>bootstrap.py</summary><pre><code>&quot;&quot;&quot;Fetch the pinned official CoMER source; remove unused legacy trainer imports.
+
+Run from the starter-project root. No third-party model code is bundled here.
+The network architecture, vocabulary and beam search stay unchanged.
+&quot;&quot;&quot;
+import argparse
+import hashlib
+from pathlib import Path
+import subprocess
+
+COMMIT = &quot;ee15cdbe02467fd29f386fd554b4bc2185110fcc&quot;
+ROOT = Path(__file__).resolve().parent
+
+COMPAT = &#x27;&#x27;&#x27;&quot;&quot;&quot;Minimal device property used by CoMER&#x27;s model modules.&quot;&quot;&quot;
+import torch
+from torch import nn
+
+class LightningModule(nn.Module):
+    @property
+    def device(self):
+        for value in self.parameters():
+            return value.device
+        for value in self.buffers():
+            return value.device
+        return torch.device(&quot;cpu&quot;)
+
+class Metric(nn.Module):
+    # The legacy ExpRateRecorder is imported but our runner does not use it.
+    def __init__(self, **kwargs):
+        super().__init__()
+    def add_state(self, name, default, **kwargs):
+        self.register_buffer(name, default)
+&#x27;&#x27;&#x27;
+
+
+def patch(repo):
+    for relative in [&quot;model/comer.py&quot;, &quot;model/encoder.py&quot;, &quot;model/pos_enc.py&quot;,
+                     &quot;utils/generation_utils.py&quot;]:
+        path = repo / &quot;comer&quot; / relative
+        source = path.read_text()
+        old, new = &quot;import pytorch_lightning as pl&quot;, &quot;from comer import _compat as pl&quot;
+        if old in source:
+            assert source.count(old) == 1, path
+            path.write_text(source.replace(old, new))
+        elif new not in source:
+            raise RuntimeError(f&quot;Unexpected upstream file: {path}&quot;)
+    path = repo / &quot;comer/utils/utils.py&quot;
+    source = path.read_text()
+    path.write_text(source.replace(&quot;from torchmetrics import Metric&quot;,
+                                   &quot;from comer._compat import Metric&quot;))
+    (repo / &quot;comer/datamodule/__init__.py&quot;).write_text(
+        &#x27;from .vocab import vocab\nvocab_size = len(vocab)\n&#x27;)
+    (repo / &quot;comer/_compat.py&quot;).write_text(COMPAT)
+    diff = subprocess.check_output([&quot;git&quot;, &quot;-C&quot;, str(repo), &quot;diff&quot;], text=True)
+    (ROOT / &quot;upstream-patch.diff&quot;).write_text(diff)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&quot;--source&quot;, type=Path, help=&quot;Existing official checkout (optional).&quot;)
+    args = parser.parse_args()
+    repo = ROOT / &quot;third_party/CoMER&quot;
+    if args.source:
+        # Useful for working offline after obtaining the official checkout.
+        import shutil
+        if repo.exists():
+            raise SystemExit(&quot;Destination exists; omit --source to reuse it.&quot;)
+        repo.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(args.source, repo)
+    elif not repo.exists():
+        repo.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run([&quot;git&quot;, &quot;clone&quot;, &quot;https://github.com/Green-Wood/CoMER.git&quot;,
+                        str(repo)], check=True)
+    head = subprocess.check_output([&quot;git&quot;, &quot;-C&quot;, str(repo), &quot;rev-parse&quot;, &quot;HEAD&quot;], text=True).strip()
+    if head != COMMIT:
+        subprocess.run([&quot;git&quot;, &quot;-C&quot;, str(repo), &quot;checkout&quot;, COMMIT], check=True)
+    patch(repo)
+    import sys
+    sys.path.insert(0, str(repo))
+    from wlm.model import load_official, save_base
+    original = next((repo / &quot;lightning_logs/version_0/checkpoints&quot;).glob(&quot;*.ckpt&quot;))
+    model, config, decode = load_official(original)
+    target = ROOT / &quot;checkpoints/base.pt&quot;
+    target.parent.mkdir(exist_ok=True)
+    save_base(target, model, config, decode, {
+        &quot;method&quot;: &quot;base&quot;, &quot;k&quot;: 0, &quot;upstream_commit&quot;: COMMIT,
+        &quot;original_sha256&quot;: hashlib.sha256(original.read_bytes()).hexdigest(),
+    })
+    print(f&quot;Ready: {target}\nPinned source: {COMMIT}\nModel parameters: &quot;
+          f&quot;{sum(p.numel() for p in model.parameters()):,}&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</code></pre></details><details><summary>app.py</summary><pre><code>&quot;&quot;&quot;Local Gradio demo: upload labeled images, adapt, then recognize a new image.&quot;&quot;&quot;
+import argparse
+from pathlib import Path
+import uuid
+import gradio as gr
+from wlm.data import write_rows
+from wlm.model import choose_device, load_model
+from wlm.predict import infer
+from wlm.train import run_training
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&quot;--base&quot;, default=&quot;checkpoints/base.pt&quot;)
+    parser.add_argument(&quot;--method&quot;, choices=[&quot;full&quot;, &quot;decoder&quot;, &quot;lora&quot;], default=&quot;lora&quot;)
+    parser.add_argument(&quot;--steps&quot;, type=int, default=200)
+    parser.add_argument(&quot;--lr&quot;, type=float)
+    parser.add_argument(&quot;--device&quot;, default=&quot;auto&quot;)
+    parser.add_argument(&quot;--port&quot;, type=int, default=7860)
+    args = parser.parse_args()
+    device = choose_device(args.device)
+    base = str(Path(args.base).resolve())
+
+    def adapt(files, labels):
+        if not files:
+            raise gr.Error(&quot;Upload your labeled expression images first.&quot;)
+        by_name = {Path(path).name: path for path in files}
+        if len(by_name) != len(files):
+            raise gr.Error(&quot;Use different filenames for each expression.&quot;)
+        pairs = {}
+        for number, line in enumerate(labels.splitlines(), 1):
+            if not line.strip():
+                continue
+            parts = line.split(&quot;\t&quot;, 1)
+            if len(parts) != 2 or parts[0] not in by_name or not parts[1].strip():
+                raise gr.Error(f&quot;Line {number}: use filename, one TAB, then LaTeX.&quot;)
+            if parts[0] in pairs:
+                raise gr.Error(f&quot;Duplicate label: {parts[0]}&quot;)
+            pairs[parts[0]] = parts[1]
+        if set(pairs) != set(by_name):
+            raise gr.Error(&quot;Provide exactly one label for every image.&quot;)
+        if not 10 &lt;= len(pairs) &lt;= 100:
+            raise gr.Error(&quot;Use 10 to 100 labeled expression images.&quot;)
+        session = uuid.uuid4().hex
+        folder = Path(&quot;demo_sessions&quot;) / session
+        rows = [{&quot;id&quot;: f&quot;{session}-{name}&quot;, &quot;image&quot;: str(Path(by_name[name]).resolve()),
+                 &quot;latex&quot;: latex, &quot;writer_id&quot;: session, &quot;dataset&quot;: &quot;demo&quot;,
+                 &quot;polarity&quot;: &quot;dark_on_light&quot;} for name, latex in pairs.items()]
+        manifest = folder / &quot;adapt.jsonl&quot;
+        write_rows(manifest, rows)
+        try:
+            checkpoint = run_training(base, manifest, folder / &quot;run&quot;, method=args.method,
+                                      steps=args.steps, lr=args.lr, device=str(device))
+        except (KeyError, ValueError) as error:
+            raise gr.Error(f&quot;Check your labels and the supported vocabulary: {error}&quot;) from error
+        return checkpoint, f&quot;Adapted {args.method} model using {len(rows)} labeled examples.&quot;, checkpoint
+
+    def recognize(image, checkpoint):
+        if not image:
+            raise gr.Error(&quot;Upload a cropped image containing one expression.&quot;)
+        model, raw = load_model(checkpoint or base, device, base_override=base)
+        prediction = infer(model, raw, [{&quot;image&quot;: image, &quot;polarity&quot;: &quot;dark_on_light&quot;}], device)[0]
+        return prediction, &quot;$$\n&quot; + prediction + &quot;\n$$&quot;
+
+    with gr.Blocks(title=&quot;Write Like Me&quot;) as demo:
+        gr.Markdown(&quot;# Write Like Me\nPersonalize a math recognizer with 10–100 labeled images of your handwriting.&quot;)
+        state = gr.State(None)
+        with gr.Tab(&quot;1 · Adapt to my handwriting&quot;):
+            files = gr.File(label=&quot;Cropped expression photos&quot;, file_count=&quot;multiple&quot;, type=&quot;filepath&quot;, file_types=[&quot;image&quot;])
+            labels = gr.Textbox(label=&quot;One label per line: filename&lt;TAB&gt;LaTeX&quot;, lines=8,
+                                placeholder=&quot;math001.jpg\tx ^ { 2 } + 1&quot;)
+            button = gr.Button(&quot;Adapt recognizer&quot;)
+            status = gr.Textbox(label=&quot;Status&quot;)
+            download = gr.File(label=&quot;Download personalized checkpoint&quot;)
+            button.click(adapt, [files, labels], [state, status, download], concurrency_limit=1)
+        with gr.Tab(&quot;2 · Recognize a new expression&quot;):
+            image = gr.Image(type=&quot;filepath&quot;, label=&quot;New expression photo&quot;)
+            recognize_button = gr.Button(&quot;Recognize&quot;)
+            latex = gr.Textbox(label=&quot;LaTeX&quot;)
+            rendered = gr.Markdown()
+            recognize_button.click(recognize, [image, state], [latex, rendered], concurrency_limit=1)
+    demo.queue(default_concurrency_limit=1).launch(server_name=&quot;127.0.0.1&quot;, server_port=args.port, share=False)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</code></pre></details><details><summary>wlm/__init__.py</summary><pre><code>&quot;&quot;&quot;Write Like Me: a small, inspectable CoMER personalization experiment.&quot;&quot;&quot;
+</code></pre></details><details><summary>wlm/analyze.py</summary><pre><code>&quot;&quot;&quot;Writer-level summaries, paired gains, bootstrap intervals and learning curves.&quot;&quot;&quot;
+import argparse
+from collections import defaultdict
+import csv
+import json
+from pathlib import Path
+import random
+import statistics
+
+
+def mean(values):
+    return statistics.mean(values)
+
+
+def interval(values, iterations=2000):
+    # Resample independent writers, after averaging a writer&#x27;s seeds.
+    rng = random.Random(42)
+    samples = sorted(mean(rng.choices(values, k=len(values))) for _ in range(iterations))
+    return samples[int(.025 * iterations)], samples[min(iterations - 1, int(.975 * iterations))]
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&quot;--root&quot;, default=&quot;runs&quot;)
+    parser.add_argument(&quot;--output&quot;, default=&quot;results&quot;)
+    args = parser.parse_args()
+    folder = Path(args.output)
+    folder.mkdir(parents=True, exist_ok=True)
+    cells, baselines, raw_rows = defaultdict(list), {}, []
+    general_base, general_rows = {}, []
+    for path in sorted(Path(args.root).rglob(&quot;metrics.json&quot;)):
+        report = json.loads(path.read_text())
+        meta = report[&quot;meta&quot;]
+        if report.get(&quot;limit&quot;) is not None:
+            continue  # Smoke-test metrics must never enter paper tables.
+        method, k = meta[&quot;method&quot;], meta.get(&quot;k&quot;)
+        if report[&quot;kind&quot;] == &quot;general&quot;:
+            if method == &quot;base&quot;:
+                general_base[report[&quot;manifest_sha256&quot;]] = report[&quot;micro&quot;][&quot;exact&quot;]
+            elif k is not None:
+                general_rows.append((report, path))
+            continue
+        if k is None:
+            continue
+        for writer, score in report[&quot;by_writer&quot;].items():
+            if writer == &quot;UNKNOWN&quot;:
+                continue
+            baseline_key = (writer, report[&quot;manifest_sha256&quot;])
+            if method == &quot;base&quot;:
+                baselines[baseline_key] = score[&quot;exact&quot;]
+            row = {&quot;writer_id&quot;: writer, &quot;method&quot;: method, &quot;k&quot;: k,
+                   &quot;seed&quot;: meta.get(&quot;seed&quot;, -1), &quot;exact&quot;: score[&quot;exact&quot;],
+                   &quot;within_1_token&quot;: score[&quot;within_1_token&quot;], &quot;within_2_tokens&quot;: score[&quot;within_2_tokens&quot;],
+                   &quot;mean_ed&quot;: score[&quot;mean_ed&quot;], &quot;mean_ned&quot;: score[&quot;mean_ned&quot;],
+                   &quot;test_sha256&quot;: report[&quot;manifest_sha256&quot;],
+                   &quot;base_sha256&quot;: meta.get(&quot;base_sha256&quot;, report[&quot;checkpoint_sha256&quot;]),
+                   &quot;trainable_parameters&quot;: meta.get(&quot;trainable_parameters&quot;, 0),
+                   &quot;training_seconds&quot;: meta.get(&quot;training_seconds&quot;, 0),
+                   &quot;peak_cuda_bytes&quot;: meta.get(&quot;peak_cuda_bytes&quot;), &quot;source&quot;: str(path)}
+            raw_rows.append(row)
+    if not raw_rows:
+        raise SystemExit(&quot;No final writer evaluations found. Run baseline and personalization evaluation first.&quot;)
+    write_csv(folder / &quot;per_run.csv&quot;, raw_rows)
+    # Do not silently combine results from different bases or target test sets.
+    base_hashes = {r[&quot;base_sha256&quot;] for r in raw_rows}
+    if len(base_hashes) &gt; 1:
+        raise ValueError(&quot;Multiple shared bases found. Analyze each experiment root separately.&quot;)
+    test_versions = defaultdict(set)
+    for r in raw_rows:
+        test_versions[r[&quot;writer_id&quot;]].add(r[&quot;test_sha256&quot;])
+    if any(len(values) &gt; 1 for values in test_versions.values()):
+        raise ValueError(&quot;A writer has multiple test manifests. Analyze separate experiment roots.&quot;)
+    for row in raw_rows:
+        if row[&quot;method&quot;] != &quot;base&quot;:
+            cells[(row[&quot;method&quot;], row[&quot;k&quot;], row[&quot;writer_id&quot;])].append(row)
+    for key, runs in cells.items():
+        seeds = [r[&quot;seed&quot;] for r in runs]
+        if len(seeds) != len(set(seeds)):
+            raise ValueError(f&quot;Duplicate evaluations for writer/method/budget/seed: {key}&quot;)
+    seed_sets = {tuple(sorted(r[&quot;seed&quot;] for r in runs)) for runs in cells.values()}
+    if len(seed_sets) &gt; 1:
+        raise ValueError(&quot;Methods/budgets/writers have different completed seed sets. Finish missing jobs first.&quot;)
+    aggregated = defaultdict(list)
+    for (method, k, writer), runs in cells.items():
+        baseline = baselines.get((writer, runs[0][&quot;test_sha256&quot;]))
+        if baseline is None:
+            raise ValueError(f&quot;Missing matched base evaluation for {writer}&quot;)
+        aggregated[(method, k)].append({&quot;writer&quot;: writer, &quot;exact&quot;: mean(r[&quot;exact&quot;] for r in runs),
+                                        &quot;gain&quot;: mean(r[&quot;exact&quot;] for r in runs) - baseline,
+                                        &quot;ed&quot;: mean(r[&quot;mean_ed&quot;] for r in runs),
+                                        &quot;within1&quot;: mean(r[&quot;within_1_token&quot;] for r in runs),
+                                        &quot;within2&quot;: mean(r[&quot;within_2_tokens&quot;] for r in runs),
+                                        &quot;seeds&quot;: len({r[&quot;seed&quot;] for r in runs})})
+    cohorts = {tuple(sorted(r[&quot;writer&quot;] for r in values)) for values in aggregated.values()}
+    if len(cohorts) &gt; 1:
+        raise ValueError(&quot;Methods/budgets have different completed writer cohorts. Finish missing jobs first.&quot;)
+    summary = []
+    for (method, k), values in sorted(aggregated.items()):
+        low, high = interval([r[&quot;exact&quot;] for r in values])
+        gain_low, gain_high = interval([r[&quot;gain&quot;] for r in values])
+        summary.append({&quot;method&quot;: method, &quot;k&quot;: k, &quot;writers&quot;: len(values),
+                        &quot;min_seeds_per_writer&quot;: min(r[&quot;seeds&quot;] for r in values),
+                        &quot;macro_exact&quot;: mean(r[&quot;exact&quot;] for r in values),
+                        &quot;ci_low&quot;: low, &quot;ci_high&quot;: high,
+                        &quot;paired_gain_pp&quot;: 100 * mean(r[&quot;gain&quot;] for r in values),
+                        &quot;gain_ci_low_pp&quot;: 100 * gain_low, &quot;gain_ci_high_pp&quot;: 100 * gain_high,
+                        &quot;within_1_token&quot;: mean(r[&quot;within1&quot;] for r in values),
+                        &quot;within_2_tokens&quot;: mean(r[&quot;within2&quot;] for r in values),
+                        &quot;mean_ed&quot;: mean(r[&quot;ed&quot;] for r in values)})
+    write_csv(folder / &quot;summary.csv&quot;, summary)
+    forgetting = []
+    for report, path in general_rows:
+        baseline = general_base.get(report[&quot;manifest_sha256&quot;])
+        if baseline is None:
+            raise ValueError(&quot;General evaluations need a matched base evaluation on the identical manifest.&quot;)
+        meta = report[&quot;meta&quot;]
+        forgetting.append({&quot;writer_id&quot;: meta.get(&quot;writer_id&quot;), &quot;method&quot;: meta[&quot;method&quot;],
+                           &quot;k&quot;: meta[&quot;k&quot;], &quot;seed&quot;: meta[&quot;seed&quot;],
+                           &quot;general_exact&quot;: report[&quot;micro&quot;][&quot;exact&quot;],
+                           &quot;forgetting_pp&quot;: 100 * (baseline - report[&quot;micro&quot;][&quot;exact&quot;]),
+                           &quot;source&quot;: str(path)})
+    if forgetting:
+        write_csv(folder / &quot;forgetting.csv&quot;, forgetting)
+    try:
+        import matplotlib
+        matplotlib.use(&quot;Agg&quot;)
+        import matplotlib.pyplot as plt
+        fig, ax = plt.subplots(figsize=(7, 4.5))
+        for method in sorted({r[&quot;method&quot;] for r in summary}):
+            rows = sorted((r for r in summary if r[&quot;method&quot;] == method), key=lambda r: r[&quot;k&quot;])
+            ax.plot([r[&quot;k&quot;] for r in rows], [100*r[&quot;macro_exact&quot;] for r in rows], marker=&quot;o&quot;, label=method)
+            ax.fill_between([r[&quot;k&quot;] for r in rows], [100*r[&quot;ci_low&quot;] for r in rows],
+                            [100*r[&quot;ci_high&quot;] for r in rows], alpha=.12)
+        if baselines:
+            baseline = mean(baselines.values()) * 100
+            ax.axhline(baseline, color=&quot;black&quot;, linestyle=&quot;--&quot;, label=&quot;shared base&quot;)
+        ax.set(xlabel=&quot;Labeled adaptation examples per writer&quot;, ylabel=&quot;Writer-macro exact match (%)&quot;,
+               title=&quot;Personalization on fixed held-out writer images&quot;)
+        ax.set_xticks([10, 25, 50, 100])
+        ax.legend()
+        ax.grid(alpha=.2)
+        fig.tight_layout()
+        fig.savefig(folder / &quot;learning_curve.png&quot;, dpi=200)
+        plt.close(fig)
+    except ImportError:
+        print(&quot;CSV files saved. Install requirements-analysis.txt to produce the plot.&quot;)
+    print(f&quot;Saved real-data summaries to {folder}; no synthetic performance values were inserted.&quot;)
+
+
+def write_csv(path, rows):
+    with open(path, &quot;w&quot;, newline=&quot;&quot;) as stream:
+        writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</code></pre></details><details><summary>wlm/data.py</summary><pre><code>&quot;&quot;&quot;Manifest I/O, conservative LaTeX tokenization, and image preprocessing.&quot;&quot;&quot;
+import hashlib
+import json
+from pathlib import Path
+import re
+
+TOKEN_RE = re.compile(r&quot;\\[A-Za-z]+|\\.|[^\s]&quot;)
+
+
+def tokens(latex):
+    text = latex.strip()
+    if text.startswith(&quot;$$&quot;) and text.endswith(&quot;$$&quot;):
+        text = text[2:-2]
+    elif text.startswith(&quot;$&quot;) and text.endswith(&quot;$&quot;):
+        text = text[1:-1]
+    return TOKEN_RE.findall(text)
+
+
+def canonical(latex):
+    # Only lexical whitespace and outer math delimiters are normalized.
+    return &quot; &quot;.join(tokens(latex))
+
+
+def read_rows(path):
+    path = Path(path)
+    rows = []
+    for line_number, line in enumerate(path.read_text().splitlines(), 1):
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        for key in (&quot;id&quot;, &quot;image&quot;, &quot;latex&quot;, &quot;writer_id&quot;, &quot;dataset&quot;, &quot;polarity&quot;):
+            if key not in row:
+                raise ValueError(f&quot;{path}:{line_number}: missing {key}&quot;)
+        if row[&quot;polarity&quot;] not in (&quot;dark_on_light&quot;, &quot;light_on_dark&quot;):
+            raise ValueError(f&quot;{path}:{line_number}: invalid polarity&quot;)
+        image = Path(row[&quot;image&quot;])
+        row[&quot;image&quot;] = str((path.parent / image).resolve() if not image.is_absolute() else image)
+        rows.append(row)
+    if not rows:
+        raise ValueError(f&quot;Empty manifest: {path}&quot;)
+    return rows
+
+
+def write_rows(path, rows):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(&quot;&quot;.join(json.dumps(r, ensure_ascii=False) + &quot;\n&quot; for r in rows))
+
+
+def file_sha256(path):
+    digest = hashlib.sha256()
+    with open(path, &quot;rb&quot;) as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b&quot;&quot;):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def image_tensor(row, augment=False):
+    import cv2
+    import numpy as np
+    import torch
+    from PIL import Image, ImageOps, ImageFilter
+    with Image.open(row[&quot;image&quot;]) as raw:
+        image = ImageOps.exif_transpose(raw).convert(&quot;L&quot;)
+    # Augment in the familiar black-ink / white-paper representation.
+    if row[&quot;polarity&quot;] == &quot;light_on_dark&quot;:
+        image = ImageOps.invert(image)
+    if augment:
+        if np.random.random() &lt; 0.35:
+            image = image.filter(ImageFilter.GaussianBlur(float(np.random.uniform(0.1, 0.8))))
+        pixels = np.asarray(image, dtype=np.float32)
+        height, width = pixels.shape
+        if np.random.random() &lt; 0.35:
+            # Mild illumination gradient; leave strokes and labels intact.
+            shading = np.linspace(float(np.random.uniform(0.75, 1)), 1, width)
+            pixels *= shading[None, :]
+        if np.random.random() &lt; 0.35:
+            # Expand the canvas before perspective changes to avoid cropping ink.
+            pixels = cv2.copyMakeBorder(pixels, 6, 6, 6, 6, cv2.BORDER_CONSTANT, value=255)
+            height, width = pixels.shape
+            src = np.float32([[0, 0], [width-1, 0], [width-1, height-1], [0, height-1]])
+            jitter = np.random.uniform(-0.02, 0.02, (4, 2)) * [width, height]
+            dst = np.float32(src + jitter)
+            pixels = cv2.warpPerspective(pixels, cv2.getPerspectiveTransform(src, dst),
+                                         (width, height), borderValue=255)
+        image = Image.fromarray(np.uint8(np.clip(pixels, 0, 255)))
+    # CoMER expects light strokes on dark background. Keep aspect ratio.
+    image = ImageOps.invert(image)
+    width, height = image.size
+    ratio = min(1.0, 1024 / width, 256 / height)
+    if ratio &lt; 1:
+        image = image.resize((max(1, round(width*ratio)), max(1, round(height*ratio))),
+                             Image.Resampling.BILINEAR)
+    # Padding preserves geometry even for an extreme aspect ratio.
+    canvas = Image.new(&quot;L&quot;, (max(16, image.width), max(16, image.height)), 0)
+    canvas.paste(image, (0, 0))
+    array = np.asarray(canvas, dtype=np.float32).copy() / 255.0
+    return torch.from_numpy(array)[None, :, :]
+
+
+def make_batch(rows, device, augment=False, labels=True):
+    import torch
+    images = [image_tensor(row, augment) for row in rows]
+    height, width = max(x.shape[1] for x in images), max(x.shape[2] for x in images)
+    batch = torch.zeros(len(images), 1, height, width)
+    mask = torch.ones(len(images), height, width, dtype=torch.bool)
+    for i, image in enumerate(images):
+        h, w = image.shape[-2:]
+        batch[i, :, :h, :w] = image
+        mask[i, :h, :w] = False
+    indices = None
+    if labels:
+        from comer.datamodule import vocab
+        indices = [vocab.words2indices(tokens(row[&quot;latex&quot;])) for row in rows]
+    return batch.to(device), mask.to(device), indices
+</code></pre></details><details><summary>wlm/leakage.py</summary><pre><code>&quot;&quot;&quot;Check two manifests before running experiments; missing IDs cannot prove isolation.&quot;&quot;&quot;
+import argparse
+from collections import defaultdict
+import json
+from .data import canonical, file_sha256, read_rows
+
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument(&quot;--left&quot;, required=True)
+    p.add_argument(&quot;--right&quot;, required=True)
+    p.add_argument(&quot;--require-writer-disjoint&quot;, action=&quot;store_true&quot;)
+    p.add_argument(&quot;--require-formula-disjoint&quot;, action=&quot;store_true&quot;)
+    args = p.parse_args()
+    left, right = read_rows(args.left), read_rows(args.right)
+    left_writers = {r[&quot;writer_id&quot;] for r in left if r[&quot;writer_id&quot;]}
+    right_writers = {r[&quot;writer_id&quot;] for r in right if r[&quot;writer_id&quot;]}
+    hashes = {file_sha256(r[&quot;image&quot;]): r[&quot;id&quot;] for r in left}
+    duplicates = [(hashes[file_sha256(r[&quot;image&quot;])], r[&quot;id&quot;]) for r in right if file_sha256(r[&quot;image&quot;]) in hashes]
+    left_formulas = {canonical(r[&quot;latex&quot;]) for r in left}
+    right_formulas = {canonical(r[&quot;latex&quot;]) for r in right}
+    report = {&quot;shared_ids&quot;: sorted({r[&#x27;id&#x27;] for r in left} &amp; {r[&#x27;id&#x27;] for r in right}),
+              &quot;identical_image_bytes&quot;: duplicates, &quot;shared_writers&quot;: sorted(left_writers &amp; right_writers),
+              &quot;unknown_writer_rows&quot;: sum(not r[&quot;writer_id&quot;] for r in left + right),
+              &quot;shared_formulas&quot;: len(left_formulas &amp; right_formulas)}
+    print(json.dumps(report, indent=2))
+    if report[&quot;shared_ids&quot;] or duplicates:
+        raise SystemExit(&quot;Leakage: repeated IDs or image bytes across these manifests.&quot;)
+    if args.require_writer_disjoint and (report[&quot;shared_writers&quot;] or report[&quot;unknown_writer_rows&quot;]):
+        raise SystemExit(&quot;Writer disjointness is not established.&quot;)
+    if args.require_formula_disjoint and report[&quot;shared_formulas&quot;]:
+        raise SystemExit(&quot;Repeated normalized formulas across these manifests.&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</code></pre></details><details><summary>wlm/metrics.py</summary><pre><code>&quot;&quot;&quot;Token-sequence metrics. These are not official CROHME symbol-graph metrics.&quot;&quot;&quot;
+import statistics
+from .data import tokens
+
+
+def edit_distance(a, b):
+    previous = list(range(len(b) + 1))
+    for i, left in enumerate(a, 1):
+        current = [i]
+        for j, right in enumerate(b, 1):
+            current.append(min(current[-1] + 1, previous[j] + 1,
+                               previous[j-1] + (left != right)))
+        previous = current
+    return previous[-1]
+
+
+def score_example(truth, prediction):
+    target, predicted = tokens(truth), tokens(prediction)
+    distance = edit_distance(target, predicted)
+    return {&quot;ed&quot;: distance, &quot;target_tokens&quot;: len(target), &quot;predicted_tokens&quot;: len(predicted),
+            &quot;ned&quot;: distance / max(1, len(target), len(predicted)),
+            &quot;fraction&quot;: &quot;\\frac&quot; in target, &quot;superscript&quot;: &quot;^&quot; in target,
+            &quot;radical&quot;: &quot;\\sqrt&quot; in target, &quot;long&quot;: len(target) &gt;= 50}
+
+
+def summarize(examples):
+    if not examples:
+        raise ValueError(&quot;No examples to evaluate.&quot;)
+    n = len(examples)
+    return {&quot;n&quot;: n, &quot;exact&quot;: sum(e[&quot;ed&quot;] == 0 for e in examples) / n,
+            &quot;within_1_token&quot;: sum(e[&quot;ed&quot;] &lt;= 1 for e in examples) / n,
+            &quot;within_2_tokens&quot;: sum(e[&quot;ed&quot;] &lt;= 2 for e in examples) / n,
+            &quot;mean_ed&quot;: statistics.mean(e[&quot;ed&quot;] for e in examples),
+            &quot;mean_ned&quot;: statistics.mean(e[&quot;ned&quot;] for e in examples),
+            &quot;token_error_rate&quot;: sum(e[&quot;ed&quot;] for e in examples) /
+                                max(1, sum(e[&quot;target_tokens&quot;] for e in examples))}
+</code></pre></details><details><summary>wlm/model.py</summary><pre><code>&quot;&quot;&quot;Load official weights, choose trainable parameters, and save small adapters.&quot;&quot;&quot;
+import inspect
+from pathlib import Path
+import sys
+import torch
+from torch import nn
+from torch.nn import functional as F
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / &quot;third_party/CoMER&quot;))
+
+
+class LoRALinear(nn.Module):
+    def __init__(self, base, rank=8, alpha=16):
+        super().__init__()
+        self.base = base
+        self.rank, self.alpha = rank, alpha
+        self.lora_A = nn.Parameter(torch.empty(rank, base.in_features))
+        self.lora_B = nn.Parameter(torch.zeros(base.out_features, rank))
+        nn.init.kaiming_uniform_(self.lora_A, a=5**0.5)
+        for parameter in base.parameters():
+            parameter.requires_grad = False
+
+    def forward(self, x):
+        update = F.linear(F.linear(x, self.lora_A), self.lora_B)
+        return self.base(x) + update * (self.alpha / self.rank)
+
+
+def configure(model, method, rank=8, alpha=16):
+    if method not in (&quot;full&quot;, &quot;decoder&quot;, &quot;lora&quot;):
+        raise ValueError(method)
+    for name, parameter in model.named_parameters():
+        parameter.requires_grad = method == &quot;full&quot; or (method == &quot;decoder&quot; and name.startswith(&quot;decoder.&quot;))
+    targets = []
+    if method == &quot;lora&quot;:
+        # CoMER attention uses raw projection tensors, not standard q_proj modules.
+        # Target the real, called decoder FFN Linear modules instead.
+        for name, module in list(model.named_modules()):
+            if name.startswith(&quot;decoder.model.layers.&quot;) and name.rsplit(&quot;.&quot;, 1)[-1] in (&quot;linear1&quot;, &quot;linear2&quot;):
+                if not isinstance(module, nn.Linear):
+                    raise TypeError(f&quot;Unexpected LoRA target: {name}&quot;)
+                parent_name, child = name.rsplit(&quot;.&quot;, 1)
+                adapter = LoRALinear(module, rank, alpha).to(device=module.weight.device,
+                                                           dtype=module.weight.dtype)
+                setattr(model.get_submodule(parent_name), child, adapter)
+                targets.append(name)
+        if len(targets) != 6:
+            raise RuntimeError(f&quot;Expected six decoder FFN targets, found {targets}&quot;)
+    return targets
+
+
+def training_mode(model, method):
+    model.train()
+    if method in (&quot;decoder&quot;, &quot;lora&quot;):
+        model.encoder.eval()
+    # Freeze running statistics for the tiny writer datasets, including full tuning.
+    # BN affine parameters still train in full mode.
+    for module in model.modules():
+        if isinstance(module, nn.modules.batchnorm._BatchNorm):
+            module.eval()
+
+
+def load_official(path):
+    from comer.model.comer import CoMER
+    # The legacy checkpoint has ModelCheckpoint as a dictionary key. This inert
+    # allowlisted name enables restricted tensor loading without installing Lightning.
+    marker = type(&quot;ModelCheckpoint&quot;, (), {})
+    marker.__module__ = &quot;pytorch_lightning.callbacks.model_checkpoint&quot;
+    with torch.serialization.safe_globals([marker]):
+        raw = torch.load(path, map_location=&quot;cpu&quot;, weights_only=True)
+    hparams = raw[&quot;hyper_parameters&quot;]
+    config = {name: hparams[name] for name in inspect.signature(CoMER.__init__).parameters if name != &quot;self&quot;}
+    decode = {name: hparams[name] for name in (&quot;beam_size&quot;, &quot;max_len&quot;, &quot;alpha&quot;, &quot;early_stopping&quot;, &quot;temperature&quot;)}
+    model = CoMER(**config)
+    state = {name.removeprefix(&quot;comer_model.&quot;): value for name, value in raw[&quot;state_dict&quot;].items()
+             if name.startswith(&quot;comer_model.&quot;)}
+    model.load_state_dict(state, strict=True)
+    return model, config, decode
+
+
+def cpu_state(model):
+    return {name: value.detach().cpu() for name, value in model.state_dict().items()}
+
+
+def save_base(path, model, config, decode, meta):
+    torch.save({&quot;format&quot;: &quot;wlm-1&quot;, &quot;kind&quot;: &quot;full&quot;, &quot;model_config&quot;: config,
+                &quot;decode&quot;: decode, &quot;state_dict&quot;: cpu_state(model), &quot;meta&quot;: meta}, path)
+
+
+def load_model(path, device=&quot;cpu&quot;, base_override=None):
+    from comer.model.comer import CoMER
+    from .data import file_sha256
+    path = Path(path).resolve()
+    raw = torch.load(path, map_location=&quot;cpu&quot;, weights_only=True)
+    if raw.get(&quot;format&quot;) != &quot;wlm-1&quot;:
+        raise ValueError(&quot;Run bootstrap.py first; use the converted base.pt checkpoint.&quot;)
+    if raw[&quot;kind&quot;] == &quot;lora&quot;:
+        base = Path(base_override or raw[&quot;base_checkpoint&quot;])
+        if not base.is_absolute():
+            base = (path.parent / base).resolve()
+        if file_sha256(base) != raw[&quot;base_sha256&quot;]:
+            raise ValueError(&quot;Adapter and base hashes differ. Select the exact training base.&quot;)
+        model, _ = load_model(base, &quot;cpu&quot;)
+        configure(model, &quot;lora&quot;, raw[&quot;rank&quot;], raw[&quot;lora_alpha&quot;])
+        expected = {n for n, p in model.named_parameters() if p.requires_grad}
+        if set(raw[&quot;adapter_state&quot;]) != expected:
+            raise ValueError(&quot;Adapter keys do not match this architecture.&quot;)
+        model.load_state_dict(raw[&quot;adapter_state&quot;], strict=False)
+    else:
+        model = CoMER(**raw[&quot;model_config&quot;])
+        model.load_state_dict(raw[&quot;state_dict&quot;], strict=True)
+    model.to(device)
+    return model, raw
+
+
+def choose_device(name=&quot;auto&quot;):
+    if name == &quot;auto&quot;:
+        return torch.device(&quot;cuda&quot; if torch.cuda.is_available() else &quot;cpu&quot;)
+    device = torch.device(name)
+    if device.type == &quot;cuda&quot; and not torch.cuda.is_available():
+        raise RuntimeError(&quot;CUDA unavailable. Request a Slurm GPU allocation or use --device cpu.&quot;)
+    return device
+</code></pre></details><details><summary>wlm/predict.py</summary><pre><code>&quot;&quot;&quot;Run real CoMER bidirectional beam search and evaluate held-out images.&quot;&quot;&quot;
+import argparse
+from collections import defaultdict
+import json
+from pathlib import Path
+import time
+import torch
+from .data import file_sha256, make_batch, read_rows, write_rows
+from .metrics import score_example, summarize
+from .model import choose_device, load_model
+
+
+@torch.no_grad()
+def infer(model, raw, rows, device, beam_size=None):
+    from comer.datamodule import vocab
+    model.eval()
+    images, mask, _ = make_batch(rows, device, labels=False)
+    decode = dict(raw[&quot;decode&quot;])
+    if beam_size is not None:
+        decode[&quot;beam_size&quot;] = beam_size
+    hypotheses = model.beam_search(images, mask, **decode)
+    return [vocab.indices2label(hypothesis.seq) for hypothesis in hypotheses]
+
+
+def evaluate(checkpoint, manifest, output, device=&quot;auto&quot;, batch_size=1,
+             beam_size=None, limit=None, base_override=None, kind=&quot;writer&quot;, as_base=False):
+    device = choose_device(str(device))
+    model, raw = load_model(checkpoint, device, base_override)
+    rows = read_rows(manifest)
+    if limit is not None:
+        rows = rows[:limit]
+    records = []
+    started = time.monotonic()
+    for start in range(0, len(rows), batch_size):
+        batch = rows[start:start+batch_size]
+        predictions = infer(model, raw, batch, device, beam_size)
+        for row, prediction in zip(batch, predictions):
+            records.append({&quot;id&quot;: row[&quot;id&quot;], &quot;image&quot;: row[&quot;image&quot;], &quot;writer_id&quot;: row[&quot;writer_id&quot;],
+                            &quot;truth&quot;: row[&quot;latex&quot;], &quot;prediction&quot;: prediction,
+                            **score_example(row[&quot;latex&quot;], prediction)})
+        print(f&quot;Decoded {min(start + batch_size, len(rows))}/{len(rows)}&quot;, flush=True)
+    grouped = defaultdict(list)
+    for record in records:
+        grouped[record[&quot;writer_id&quot;] or &quot;UNKNOWN&quot;].append(record)
+    by_writer = {writer: summarize(examples) for writer, examples in grouped.items()}
+    metadata = dict(raw[&quot;meta&quot;])
+    if as_base:
+        metadata.update(method=&quot;base&quot;, k=0, base_sha256=file_sha256(checkpoint))
+    summary = {&quot;kind&quot;: kind, &quot;checkpoint&quot;: str(Path(checkpoint).resolve()),
+               &quot;checkpoint_sha256&quot;: file_sha256(checkpoint), &quot;manifest_sha256&quot;: file_sha256(manifest),
+               &quot;meta&quot;: metadata, &quot;micro&quot;: summarize(records), &quot;by_writer&quot;: by_writer,
+               &quot;writer_macro_exact&quot;: sum(s[&quot;exact&quot;] for s in by_writer.values()) / len(by_writer),
+               &quot;seconds&quot;: time.monotonic() - started, &quot;device&quot;: str(device),
+               &quot;beam_size&quot;: beam_size or raw[&quot;decode&quot;][&quot;beam_size&quot;], &quot;limit&quot;: limit,
+               &quot;categories&quot;: {category: summarize([e for e in records if e[category]])
+                              for category in (&quot;fraction&quot;, &quot;superscript&quot;, &quot;radical&quot;, &quot;long&quot;)
+                              if any(e[category] for e in records)}}
+    folder = Path(output)
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / &quot;predictions.jsonl&quot;).write_text(&quot;&quot;.join(json.dumps(r) + &quot;\n&quot; for r in records))
+    (folder / &quot;metrics.json&quot;).write_text(json.dumps(summary, indent=2))
+    print(json.dumps(summary[&quot;micro&quot;], indent=2))
+    return summary
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    sub = parser.add_subparsers(dest=&quot;command&quot;, required=True)
+    p = sub.add_parser(&quot;image&quot;)
+    p.add_argument(&quot;--checkpoint&quot;, required=True)
+    p.add_argument(&quot;--image&quot;, required=True)
+    p.add_argument(&quot;--polarity&quot;, choices=[&quot;dark_on_light&quot;, &quot;light_on_dark&quot;], required=True)
+    p.add_argument(&quot;--device&quot;, default=&quot;auto&quot;)
+    p.add_argument(&quot;--beam-size&quot;, type=int)
+    p.add_argument(&quot;--base-override&quot;)
+    p = sub.add_parser(&quot;evaluate&quot;)
+    for name in (&quot;checkpoint&quot;, &quot;manifest&quot;, &quot;output&quot;):
+        p.add_argument(&quot;--&quot; + name, required=True)
+    p.add_argument(&quot;--device&quot;, default=&quot;auto&quot;)
+    p.add_argument(&quot;--batch-size&quot;, type=int, default=1)
+    p.add_argument(&quot;--beam-size&quot;, type=int)
+    p.add_argument(&quot;--limit&quot;, type=int)
+    p.add_argument(&quot;--base-override&quot;)
+    p.add_argument(&quot;--kind&quot;, choices=[&quot;writer&quot;, &quot;general&quot;], default=&quot;writer&quot;)
+    p.add_argument(&quot;--as-base&quot;, action=&quot;store_true&quot;, help=&quot;Label the shared starting model as a baseline.&quot;)
+    args = parser.parse_args()
+    if args.command == &quot;evaluate&quot;:
+        params = vars(args).copy()
+        params.pop(&quot;command&quot;)
+        evaluate(**params)
+    else:
+        device = choose_device(args.device)
+        model, raw = load_model(args.checkpoint, device, args.base_override)
+        row = {&quot;image&quot;: args.image, &quot;polarity&quot;: args.polarity}
+        print(infer(model, raw, [row], device, args.beam_size)[0])
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</code></pre></details><details><summary>wlm/prepare.py</summary><pre><code>&quot;&quot;&quot;Import real dataset labels, audit them, and create reproducible writer splits.&quot;&quot;&quot;
+import argparse
+from collections import Counter, defaultdict
+import csv
+import json
+from pathlib import Path
+import random
+import re
+import xml.etree.ElementTree as ET
+import zipfile
+from .data import canonical, file_sha256, read_rows, tokens, write_rows
+
+
+def import_upstream(args):
+    archive = Path(&quot;third_party/CoMER/data.zip&quot;)
+    target = Path(args.images).resolve()
+    rows = []
+    with zipfile.ZipFile(archive) as z:
+        lines = z.read(f&quot;data/{args.split}/caption.txt&quot;).decode().splitlines()
+        for line in lines:
+            name, latex = line.split(maxsplit=1)
+            path = target / args.split / f&quot;{name}.bmp&quot;
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(z.read(f&quot;data/{args.split}/img/{name}.bmp&quot;))
+            rows.append({&quot;id&quot;: f&quot;upstream-{args.split}-{name}&quot;, &quot;image&quot;: str(path), &quot;latex&quot;: latex,
+                         &quot;writer_id&quot;: None, &quot;dataset&quot;: &quot;CoMER-bundled-CROHME&quot;,
+                         &quot;official_split&quot;: args.split, &quot;polarity&quot;: &quot;light_on_dark&quot;})
+    write_rows(args.output, rows)
+    print(f&quot;Imported {len(rows)} examples. Writer IDs are unknown; use for general evaluation only.&quot;)
+
+
+def import_hme(args):
+    rows = []
+    for line_number, line in enumerate(Path(args.labels).read_text().splitlines(), 1):
+        if not line.strip():
+            continue
+        parts = line.split(maxsplit=1)
+        if len(parts) != 2:
+            raise ValueError(f&quot;Bad label line {line_number}: expected filename then LaTeX&quot;)
+        name, latex = parts
+        rows.append({&quot;id&quot;: f&quot;HME100K-{args.split}-{name}&quot;,
+                     &quot;image&quot;: str((Path(args.images) / name).resolve()), &quot;latex&quot;: latex,
+                     &quot;writer_id&quot;: None, &quot;dataset&quot;: &quot;HME100K&quot;, &quot;official_split&quot;: args.split,
+                     &quot;polarity&quot;: &quot;dark_on_light&quot;})
+    write_rows(args.output, rows)
+    print(f&quot;Imported {len(rows)} HME100K labels; no writer IDs inferred.&quot;)
+
+
+def import_crohme(args):
+    ink_root, image_root = Path(args.inkml), Path(args.images)
+    images = defaultdict(list)
+    for path in image_root.rglob(&quot;*&quot;):
+        if path.suffix.lower() in (&quot;.png&quot;, &quot;.bmp&quot;, &quot;.jpg&quot;, &quot;.jpeg&quot;):
+            images[path.stem].append(path)
+    writers = {}
+    if args.writer_map:
+        with open(args.writer_map, newline=&quot;&quot;) as stream:
+            for row in csv.DictReader(stream):
+                if row[&quot;id&quot;] in writers:
+                    raise ValueError(f&quot;Duplicate writer-map id: {row[&#x27;id&#x27;]}&quot;)
+                writers[row[&quot;id&quot;]] = row[&quot;writer_id&quot;]
+    rows, rejected = [], []
+    for path in sorted(ink_root.rglob(&quot;*.inkml&quot;)):
+        annotations = {}
+        root = ET.parse(path).getroot()
+        for child in root:
+            if child.tag.rsplit(&quot;}&quot;, 1)[-1] == &quot;annotation&quot;:
+                key = re.sub(r&quot;[^a-z]&quot;, &quot;&quot;, child.attrib.get(&quot;type&quot;, &quot;&quot;).lower())
+                annotations[key] = &quot;&quot;.join(child.itertext()).strip()
+        latex = annotations.get(&quot;truth&quot;) or annotations.get(&quot;latex&quot;)
+        matches = images[path.stem]
+        if not latex or len(matches) != 1:
+            rejected.append({&quot;inkml&quot;: str(path), &quot;reason&quot;: &quot;missing truth or non-unique image stem&quot;})
+            continue
+        relative_id = path.relative_to(ink_root).as_posix()
+        writer = writers.get(relative_id) or writers.get(path.stem)
+        writer = writer or annotations.get(&quot;writerid&quot;) or annotations.get(&quot;writer&quot;)
+        rows.append({&quot;id&quot;: f&quot;{args.dataset}-{relative_id}&quot;, &quot;image&quot;: str(matches[0].resolve()),
+                     &quot;latex&quot;: latex, &quot;writer_id&quot;: f&quot;{args.dataset}:{writer}&quot; if writer else None,
+                     &quot;dataset&quot;: args.dataset, &quot;official_split&quot;: args.split, &quot;polarity&quot;: args.polarity,
+                     &quot;inkml&quot;: str(path.resolve()), &quot;annotations&quot;: annotations})
+    write_rows(args.output, rows)
+    Path(str(args.output) + &quot;.rejected.json&quot;).write_text(json.dumps(rejected, indent=2))
+    print(f&quot;Imported {len(rows)}; rejected {len(rejected)}; &quot;
+          f&quot;missing writer IDs: {sum(not r[&#x27;writer_id&#x27;] for r in rows)}.&quot;)
+
+
+def audit(args):
+    dictionary = Path(&quot;third_party/CoMER/comer/datamodule/dictionary.txt&quot;)
+    known = set(dictionary.read_text().splitlines())
+    rows, seen_ids, seen_images, accepted = read_rows(args.manifest), set(), {}, []
+    writers, unknown, problems = Counter(), Counter(), []
+    for row in rows:
+        reasons = []
+        if row[&quot;id&quot;] in seen_ids:
+            reasons.append(&quot;duplicate id&quot;)
+        seen_ids.add(row[&quot;id&quot;])
+        path = Path(row[&quot;image&quot;])
+        if not path.is_file():
+            reasons.append(&quot;missing image&quot;)
+        else:
+            try:
+                from PIL import Image
+                with Image.open(path) as im:
+                    im.verify()
+            except Exception as error:
+                reasons.append(f&quot;unreadable image: {error}&quot;)
+            digest = file_sha256(path)
+            if digest in seen_images:
+                reasons.append(f&quot;duplicate image bytes: {seen_images[digest]}&quot;)
+            seen_images[digest] = row[&quot;id&quot;]
+        sequence = tokens(row[&quot;latex&quot;])
+        oov = [t for t in sequence if t not in known]
+        unknown.update(oov)
+        if oov:
+            reasons.append(&quot;out-of-vocabulary tokens&quot;)
+        if not sequence or len(sequence) &gt; 198:
+            reasons.append(&quot;empty label or more than 198 tokens&quot;)
+        writers[row[&quot;writer_id&quot;] or &quot;UNKNOWN&quot;] += 1
+        if reasons:
+            problems.append({&quot;id&quot;: row[&quot;id&quot;], &quot;reasons&quot;: reasons, &quot;oov&quot;: oov})
+        else:
+            accepted.append(row)
+    report = {&quot;n&quot;: len(rows), &quot;eligible_training_rows&quot;: len(accepted),
+              &quot;writer_counts&quot;: dict(writers), &quot;unknown_tokens&quot;: dict(unknown), &quot;problems&quot;: problems}
+    Path(args.output).parent.mkdir(parents=True, exist_ok=True)
+    Path(args.output).write_text(json.dumps(report, indent=2))
+    if args.filtered:
+        write_rows(args.filtered, accepted)
+    print(json.dumps({k: v for k, v in report.items() if k != &quot;problems&quot;}, indent=2))
+    print(&quot;Filtering is for training. Preserve every test row and report OOV coverage separately.&quot;)
+
+
+def writer_splits(args):
+    rows = read_rows(args.manifest)
+    requested = set(args.writers.split(&quot;,&quot;)) if args.writers else None
+    grouped = defaultdict(list)
+    for row in rows:
+        writer = row[&quot;writer_id&quot;]
+        if writer and (requested is None or writer in requested):
+            grouped[writer].append(row)
+    if requested and not requested.issubset(grouped):
+        raise ValueError(f&quot;Writer IDs not found: {requested - set(grouped)}&quot;)
+    summary = []
+    for writer, items in sorted(grouped.items()):
+        # Keep one acquisition per distinct normalized formula per writer. This
+        # prevents a repeated formula/photo variant entering support and test.
+        unique = {}
+        for row in sorted(items, key=lambda r: r[&quot;id&quot;]):
+            unique.setdefault(canonical(row[&quot;latex&quot;]), row)
+        items = list(unique.values())
+        if len(items) &lt; 100 + args.test_size:
+            summary.append({&quot;writer_id&quot;: writer, &quot;status&quot;: &quot;insufficient&quot;,
+                            &quot;unique_formulas&quot;: len(items), &quot;needed&quot;: 100 + args.test_size})
+            continue
+        random.Random(f&quot;{args.seed}:{writer}&quot;).shuffle(items)
+        test, pool = items[:args.test_size], items[args.test_size:]
+        slug = re.sub(r&quot;[^a-zA-Z0-9_-]&quot;, &quot;_&quot;, writer)
+        # Hash suffix avoids collisions between sanitized writer IDs.
+        import hashlib
+        slug += &quot;_&quot; + hashlib.sha256(writer.encode()).hexdigest()[:8]
+        folder = Path(args.output) / slug
+        write_rows(folder / &quot;test.jsonl&quot;, test)
+        for k in (10, 25, 50, 100):
+            write_rows(folder / f&quot;adapt_{k}.jsonl&quot;, pool[:k])
+        summary.append({&quot;writer_id&quot;: writer, &quot;folder&quot;: str(folder.resolve()), &quot;status&quot;: &quot;ready&quot;,
+                        &quot;unique_formulas&quot;: len(items), &quot;test_size&quot;: len(test),
+                        &quot;unused&quot;: len(pool) - 100})
+    out = Path(args.output)
+    out.mkdir(parents=True, exist_ok=True)
+    (out / &quot;split_report.json&quot;).write_text(json.dumps(summary, indent=2))
+    print(json.dumps(summary, indent=2))
+
+
+def domain_split(args):
+    # Use only the official training partition for this split.
+    rows = read_rows(args.manifest)
+    if any(row.get(&quot;official_split&quot;) != &quot;train&quot; for row in rows):
+        raise ValueError(&quot;Domain splits require official_split=train for every row.&quot;)
+    groups = defaultdict(list)
+    for row in rows:
+        groups[canonical(row[&quot;latex&quot;])].append(row)
+    keys = sorted(groups)
+    random.Random(args.seed).shuffle(keys)
+    n = max(1, round(len(keys) * args.val_fraction))
+    if n &gt;= len(keys):
+        raise ValueError(&quot;Need at least two distinct formulas for train/validation.&quot;)
+    val_keys = set(keys[:n])
+    train = [r for key, values in groups.items() if key not in val_keys for r in values]
+    val = [r for key, values in groups.items() if key in val_keys for r in values]
+    write_rows(Path(args.output) / &quot;train.jsonl&quot;, train)
+    write_rows(Path(args.output) / &quot;val.jsonl&quot;, val)
+    print(f&quot;Domain train={len(train)} val={len(val)}; formula groups kept together.&quot;)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    sub = parser.add_subparsers(dest=&quot;command&quot;, required=True)
+    p = sub.add_parser(&quot;upstream&quot;)
+    p.add_argument(&quot;--split&quot;, choices=[&quot;train&quot;, &quot;2014&quot;, &quot;2016&quot;, &quot;2019&quot;], required=True)
+    p.add_argument(&quot;--images&quot;, default=&quot;data/upstream_images&quot;)
+    p.add_argument(&quot;--output&quot;, required=True)
+    p.set_defaults(func=import_upstream)
+    p = sub.add_parser(&quot;hme100k&quot;)
+    for flag in (&quot;labels&quot;, &quot;images&quot;, &quot;output&quot;):
+        p.add_argument(&quot;--&quot; + flag, required=True)
+    p.add_argument(&quot;--split&quot;, choices=[&quot;train&quot;, &quot;test&quot;], required=True)
+    p.set_defaults(func=import_hme)
+    p = sub.add_parser(&quot;crohme&quot;)
+    for flag in (&quot;inkml&quot;, &quot;images&quot;, &quot;output&quot;, &quot;dataset&quot;, &quot;split&quot;):
+        p.add_argument(&quot;--&quot; + flag, required=True)
+    p.add_argument(&quot;--writer-map&quot;)
+    p.add_argument(&quot;--polarity&quot;, choices=[&quot;dark_on_light&quot;, &quot;light_on_dark&quot;], required=True)
+    p.set_defaults(func=import_crohme)
+    p = sub.add_parser(&quot;audit&quot;)
+    p.add_argument(&quot;--manifest&quot;, required=True)
+    p.add_argument(&quot;--output&quot;, required=True)
+    p.add_argument(&quot;--filtered&quot;)
+    p.set_defaults(func=audit)
+    p = sub.add_parser(&quot;writer-splits&quot;)
+    p.add_argument(&quot;--manifest&quot;, required=True)
+    p.add_argument(&quot;--output&quot;, default=&quot;data/writers&quot;)
+    p.add_argument(&quot;--writers&quot;, help=&quot;Comma-separated exact, namespaced writer IDs&quot;)
+    p.add_argument(&quot;--test-size&quot;, type=int, default=50)
+    p.add_argument(&quot;--seed&quot;, type=int, default=42)
+    p.set_defaults(func=writer_splits)
+    p = sub.add_parser(&quot;domain-split&quot;)
+    p.add_argument(&quot;--manifest&quot;, required=True)
+    p.add_argument(&quot;--output&quot;, default=&quot;data/domain&quot;)
+    p.add_argument(&quot;--val-fraction&quot;, type=float, default=0.05)
+    p.add_argument(&quot;--seed&quot;, type=int, default=42)
+    p.set_defaults(func=domain_split)
+    args = parser.parse_args()
+    if args.command == &quot;domain-split&quot; and not 0 &lt; args.val_fraction &lt; 1:
+        parser.error(&quot;val-fraction must be between zero and one&quot;)
+    if args.command == &quot;writer-splits&quot; and args.test_size &lt; 1:
+        parser.error(&quot;test-size must be positive&quot;)
+    args.func(args)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</code></pre></details><details><summary>wlm/sweep.py</summary><pre><code>&quot;&quot;&quot;Create a reviewable experiment list, then run one entry per Slurm array task.&quot;&quot;&quot;
+import argparse
+import json
+from pathlib import Path
+from .data import file_sha256
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    sub = parser.add_subparsers(dest=&quot;command&quot;, required=True)
+    p = sub.add_parser(&quot;plan&quot;)
+    p.add_argument(&quot;--splits&quot;, required=True, help=&quot;Directory containing split_report.json&quot;)
+    p.add_argument(&quot;--base&quot;, required=True)
+    p.add_argument(&quot;--output&quot;, default=&quot;runs/personal&quot;)
+    p.add_argument(&quot;--jobs&quot;, default=&quot;jobs.jsonl&quot;)
+    p.add_argument(&quot;--methods&quot;, default=&quot;full,decoder,lora&quot;)
+    p.add_argument(&quot;--budgets&quot;, default=&quot;10,25,50,100&quot;)
+    p.add_argument(&quot;--seeds&quot;, default=&quot;0,1,2&quot;)
+    p.add_argument(&quot;--steps&quot;, type=int, default=200)
+    p.add_argument(&quot;--batch-size&quot;, type=int, default=4)
+    p.add_argument(&quot;--general&quot;, help=&quot;Optional fixed, held-out general test manifest&quot;)
+    p.add_argument(&quot;--augment&quot;, action=&quot;store_true&quot;)
+    p = sub.add_parser(&quot;run&quot;)
+    p.add_argument(&quot;--jobs&quot;, default=&quot;jobs.jsonl&quot;)
+    p.add_argument(&quot;--index&quot;, type=int, required=True)
+    p.add_argument(&quot;--device&quot;, default=&quot;cuda&quot;)
+    args = parser.parse_args()
+    if args.command == &quot;plan&quot;:
+        report = json.loads((Path(args.splits) / &quot;split_report.json&quot;).read_text())
+        jobs = []
+        for row in report:
+            if row[&quot;status&quot;] != &quot;ready&quot;:
+                continue
+            folder = Path(row[&quot;folder&quot;])
+            for method in args.methods.split(&quot;,&quot;):
+                if method not in (&quot;full&quot;, &quot;decoder&quot;, &quot;lora&quot;):
+                    raise ValueError(method)
+                for k in map(int, args.budgets.split(&quot;,&quot;)):
+                    for seed in map(int, args.seeds.split(&quot;,&quot;)):
+                        support = folder / f&quot;adapt_{k}.jsonl&quot;
+                        test = folder / &quot;test.jsonl&quot;
+                        jobs.append({&quot;base&quot;: str(Path(args.base).resolve()),
+                                     &quot;base_sha256&quot;: file_sha256(args.base),
+                                     &quot;manifest&quot;: str(support), &quot;manifest_sha256&quot;: file_sha256(support),
+                                     &quot;test&quot;: str(test), &quot;test_sha256&quot;: file_sha256(test),
+                                     &quot;output&quot;: str((Path(args.output) / folder.name / method /
+                                                    f&quot;k{k}_s{seed}&quot;).resolve()),
+                                     &quot;method&quot;: method, &quot;seed&quot;: seed, &quot;steps&quot;: args.steps,
+                                     &quot;batch_size&quot;: args.batch_size, &quot;augment&quot;: args.augment,
+                                     &quot;general&quot;: str(Path(args.general).resolve()) if args.general else None,
+                                     &quot;general_sha256&quot;: file_sha256(args.general) if args.general else None})
+        Path(args.jobs).write_text(&quot;&quot;.join(json.dumps(job) + &quot;\n&quot; for job in jobs))
+        print(f&quot;Wrote {len(jobs)} experiments to {args.jobs}. Array indices: 0..{len(jobs)-1}&quot;)
+    else:
+        from .train import run_training
+        from .predict import evaluate
+        jobs = [json.loads(line) for line in Path(args.jobs).read_text().splitlines()]
+        if not 0 &lt;= args.index &lt; len(jobs):
+            raise ValueError(&quot;Job index outside plan&quot;)
+        job = jobs[args.index]
+        for key in (&quot;base&quot;, &quot;manifest&quot;, &quot;test&quot;, &quot;general&quot;):
+            if job[key] and file_sha256(job[key]) != job[key + &quot;_sha256&quot;]:
+                raise ValueError(f&quot;Experiment input changed after planning: {key}&quot;)
+        folder = Path(job[&quot;output&quot;])
+        current = folder / &quot;model.pt&quot;
+        checkpoint = run_training(**{k: job[k] for k in (&quot;base&quot;, &quot;manifest&quot;, &quot;output&quot;, &quot;method&quot;,
+                                                         &quot;seed&quot;, &quot;steps&quot;, &quot;batch_size&quot;, &quot;augment&quot;)},
+                                  device=args.device, resume=str(current) if current.exists() else None)
+        evaluate(checkpoint, job[&quot;test&quot;], folder / &quot;writer&quot;, device=args.device)
+        if job[&quot;general&quot;]:
+            evaluate(checkpoint, job[&quot;general&quot;], folder / &quot;general&quot;, device=args.device, kind=&quot;general&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</code></pre></details><details><summary>wlm/train.py</summary><pre><code>&quot;&quot;&quot;Single-GPU/CPU fine-tuning with fixed update budgets and resumable checkpoints.&quot;&quot;&quot;
+import argparse
+import json
+import os
+from pathlib import Path
+import random
+import time
+import numpy as np
+import torch
+from .data import file_sha256, make_batch, read_rows, tokens
+from .model import choose_device, configure, cpu_state, load_model, training_mode
+
+
+def seed_all(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
+
+
+def rng_state():
+    state = np.random.get_state()
+    return {&quot;python&quot;: random.getstate(), &quot;numpy&quot;: [state[0], state[1].tolist(), *state[2:]],
+            &quot;torch&quot;: torch.get_rng_state(),
+            &quot;cuda&quot;: torch.cuda.get_rng_state_all() if torch.cuda.is_available() else []}
+
+
+def restore_rng(state):
+    random.setstate(state[&quot;python&quot;])
+    n = state[&quot;numpy&quot;]
+    np.random.set_state((n[0], np.array(n[1], dtype=np.uint32), *n[2:]))
+    torch.set_rng_state(state[&quot;torch&quot;])
+    if torch.cuda.is_available() and state[&quot;cuda&quot;]:
+        torch.cuda.set_rng_state_all(state[&quot;cuda&quot;])
+
+
+@torch.no_grad()
+def validation_loss(model, rows, device, batch_size):
+    from comer.utils.utils import ce_loss, to_bi_tgt_out
+    from comer.datamodule import vocab
+    model.eval()
+    total, count = 0.0, 0
+    for start in range(0, len(rows), batch_size):
+        images, mask, labels = make_batch(rows[start:start+batch_size], device)
+        target, output = to_bi_tgt_out(labels, device)
+        loss = ce_loss(model(images, mask, target), output, reduction=&quot;sum&quot;)
+        total += float(loss)
+        count += int((output != vocab.PAD_IDX).sum())
+    return total / max(1, count)
+
+
+def run_training(base, manifest, output, method=&quot;decoder&quot;, steps=200, batch_size=4,
+                 lr=None, seed=0, augment=False, val=None, device=&quot;auto&quot;, rank=8,
+                 lora_alpha=16, save_every=50, resume=None):
+    if steps &lt; 1 or batch_size &lt; 1 or save_every &lt; 1:
+        raise ValueError(&quot;steps, batch-size and save-every must be positive&quot;)
+    device = choose_device(str(device))
+    seed_all(seed)
+    rows = read_rows(manifest)
+    validation = read_rows(val) if val else None
+    writers = {row[&quot;writer_id&quot;] for row in rows}
+    if validation is None and (len(writers) != 1 or None in writers):
+        raise ValueError(&quot;Personalize on one known writer at a time. Domain training requires --val.&quot;)
+    model, base_raw = load_model(base, device)
+    if base_raw[&quot;kind&quot;] == &quot;lora&quot;:
+        raise ValueError(&quot;Start each adaptation from a shared full checkpoint, not another adapter.&quot;)
+    from comer.datamodule import vocab
+    for row in rows + (validation or []):
+        unknown = set(tokens(row[&quot;latex&quot;])) - set(vocab.word2idx)
+        if unknown or not tokens(row[&quot;latex&quot;]) or len(tokens(row[&quot;latex&quot;])) &gt; 198:
+            raise ValueError(f&quot;Audit training label first: {row[&#x27;id&#x27;]}; unknown={unknown}&quot;)
+    targets = configure(model, method, rank, lora_alpha)
+    lr = lr if lr is not None else {&quot;full&quot;: 1e-5, &quot;decoder&quot;: 5e-5, &quot;lora&quot;: 1e-3}[method]
+    trainable = [parameter for parameter in model.parameters() if parameter.requires_grad]
+    optimizer = torch.optim.AdamW(trainable, lr=lr, weight_decay=1e-4)
+    folder = Path(output).resolve()
+    folder.mkdir(parents=True, exist_ok=True)
+    checkpoint = folder / &quot;model.pt&quot;
+    train_config = {&quot;base&quot;: str(Path(base).resolve()), &quot;manifest&quot;: str(Path(manifest).resolve()),
+                    &quot;manifest_sha256&quot;: file_sha256(manifest), &quot;method&quot;: method, &quot;steps&quot;: steps,
+                    &quot;batch_size&quot;: batch_size, &quot;lr&quot;: lr, &quot;seed&quot;: seed, &quot;augment&quot;: augment,
+                    &quot;rank&quot;: rank, &quot;lora_alpha&quot;: lora_alpha,
+                    &quot;val&quot;: str(Path(val).resolve()) if val else None,
+                    &quot;val_sha256&quot;: file_sha256(val) if val else None}
+    meta = {&quot;method&quot;: method, &quot;k&quot;: len(rows) if not validation else None,
+            &quot;writer_id&quot;: next(iter(writers)) if len(writers) == 1 else None,
+            &quot;seed&quot;: seed, &quot;trainable_parameters&quot;: sum(p.numel() for p in trainable),
+            &quot;total_parameters&quot;: sum(p.numel() for p in model.parameters()), &quot;targets&quot;: targets,
+            &quot;bn_running_statistics&quot;: &quot;frozen&quot;, &quot;base_sha256&quot;: file_sha256(base),
+            &quot;train_config&quot;: train_config}
+    (folder / &quot;config.json&quot;).write_text(json.dumps(meta, indent=2))
+    print(json.dumps({k: v for k, v in meta.items() if k != &quot;train_config&quot;}, indent=2), flush=True)
+    start_step, best, elapsed_before = 0, float(&quot;inf&quot;), 0.0
+    if resume:
+        old_model, old = load_model(resume, device, base_override=base)
+        old_config = old[&quot;meta&quot;][&quot;train_config&quot;]
+        for key in train_config:
+            if key != &quot;steps&quot; and old_config.get(key) != train_config[key]:
+                raise ValueError(f&quot;Resume configuration mismatch: {key}&quot;)
+        model.load_state_dict(old_model.state_dict(), strict=True)
+        del old_model
+        optimizer.load_state_dict(old[&quot;optimizer_state&quot;])
+        restore_rng(old[&quot;rng&quot;])
+        start_step, best = old[&quot;step&quot;], old[&quot;best_val_loss&quot;]
+        elapsed_before = old[&quot;meta&quot;].get(&quot;training_seconds&quot;, 0)
+    if device.type == &quot;cuda&quot;:
+        torch.cuda.reset_peak_memory_stats(device)
+    started = time.monotonic()
+
+    def save(step, path):
+        meta[&quot;training_seconds&quot;] = elapsed_before + time.monotonic() - started
+        meta[&quot;peak_cuda_bytes&quot;] = torch.cuda.max_memory_allocated(device) if device.type == &quot;cuda&quot; else None
+        raw = {&quot;format&quot;: &quot;wlm-1&quot;, &quot;kind&quot;: &quot;lora&quot; if method == &quot;lora&quot; else &quot;full&quot;,
+               &quot;model_config&quot;: base_raw[&quot;model_config&quot;], &quot;decode&quot;: base_raw[&quot;decode&quot;],
+               &quot;meta&quot;: meta, &quot;step&quot;: step, &quot;optimizer_state&quot;: optimizer.state_dict(),
+               &quot;rng&quot;: rng_state(), &quot;best_val_loss&quot;: best}
+        if method == &quot;lora&quot;:
+            names = {name for name, p in model.named_parameters() if p.requires_grad}
+            raw.update(adapter_state={name: value for name, value in cpu_state(model).items() if name in names},
+                       base_checkpoint=os.path.relpath(Path(base).resolve(), Path(path).parent),
+                       base_sha256=meta[&quot;base_sha256&quot;], rank=rank, lora_alpha=lora_alpha)
+        else:
+            raw[&quot;state_dict&quot;] = cpu_state(model)
+        temporary = Path(str(path) + &quot;.tmp&quot;)
+        torch.save(raw, temporary)
+        os.replace(temporary, path)
+
+    log_mode = &quot;a&quot; if resume else &quot;w&quot;
+    with (folder / &quot;loss.jsonl&quot;).open(log_mode) as log:
+        for step in range(start_step, steps):
+            training_mode(model, method)
+            # Step-indexed sampling is reproducible when a job is resumed.
+            indices = random.Random(seed * 1000003 + step).choices(range(len(rows)), k=batch_size)
+            examples = [rows[i] for i in indices]
+            images, mask, labels = make_batch(examples, device, augment)
+            from comer.utils.utils import ce_loss, to_bi_tgt_out
+            target, output_ids = to_bi_tgt_out(labels, device)
+            optimizer.zero_grad(set_to_none=True)
+            loss = ce_loss(model(images, mask, target), output_ids)
+            if not torch.isfinite(loss):
+                raise RuntimeError(f&quot;Non-finite loss at step {step + 1}&quot;)
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(trainable, 1.0)
+            optimizer.step()
+            record = {&quot;step&quot;: step + 1, &quot;train_loss&quot;: float(loss.detach())}
+            if (step + 1) % save_every == 0 or step + 1 == steps:
+                if validation:
+                    score = validation_loss(model, validation, device, batch_size)
+                    record[&quot;val_loss&quot;] = score
+                    if score &lt; best:
+                        best = score
+                        save(step + 1, folder / &quot;best.pt&quot;)
+                save(step + 1, checkpoint)
+                print(json.dumps(record), flush=True)
+            log.write(json.dumps(record) + &quot;\n&quot;)
+            log.flush()
+    return str(folder / &quot;best.pt&quot; if validation else checkpoint)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    for name in (&quot;base&quot;, &quot;manifest&quot;, &quot;output&quot;):
+        parser.add_argument(&quot;--&quot; + name, required=True)
+    parser.add_argument(&quot;--method&quot;, choices=[&quot;full&quot;, &quot;decoder&quot;, &quot;lora&quot;], default=&quot;decoder&quot;)
+    parser.add_argument(&quot;--steps&quot;, type=int, default=200)
+    parser.add_argument(&quot;--batch-size&quot;, type=int, default=4)
+    parser.add_argument(&quot;--lr&quot;, type=float)
+    parser.add_argument(&quot;--seed&quot;, type=int, default=0)
+    parser.add_argument(&quot;--augment&quot;, action=&quot;store_true&quot;)
+    parser.add_argument(&quot;--val&quot;)
+    parser.add_argument(&quot;--device&quot;, default=&quot;auto&quot;)
+    parser.add_argument(&quot;--rank&quot;, type=int, default=8)
+    parser.add_argument(&quot;--lora-alpha&quot;, type=int, default=16)
+    parser.add_argument(&quot;--save-every&quot;, type=int, default=50)
+    parser.add_argument(&quot;--resume&quot;)
+    args = parser.parse_args()
+    print(&quot;Saved:&quot;, run_training(**vars(args)))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</code></pre></details><details><summary>slurm/sweep.sbatch</summary><pre><code>#!/bin/bash
+#SBATCH --job-name=wlm-sweep
+#SBATCH --partition=gpu
+#SBATCH --gres=gpu:1
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=16G
+#SBATCH --time=02:00:00
+#SBATCH --output=logs/%x-%A_%a.out
+# Pass the array bounds at submission; do not submit all experiments before a pilot.
+set -euo pipefail
+cd &quot;$SLURM_SUBMIT_DIR&quot;
+export WLM_PROJECT_DIR=&quot;$PWD&quot;
+export OMP_NUM_THREADS=&quot;$SLURM_CPUS_PER_TASK&quot;
+export PYTHONUNBUFFERED=1
+export PYTHONNOUSERSITE=1
+CONDA_BASE_DIR=&quot;$(conda info --base)&quot;
+source &quot;$CONDA_BASE_DIR/etc/profile.d/conda.sh&quot;
+conda activate wlm
+cd &quot;$WLM_PROJECT_DIR&quot;
+python -m wlm.sweep run --jobs &quot;${1:-jobs.jsonl}&quot; --index &quot;$SLURM_ARRAY_TASK_ID&quot; --device cuda
+</code></pre></details><details><summary>slurm/train.sbatch</summary><pre><code>#!/bin/bash
+#SBATCH --job-name=wlm-pilot
+#SBATCH --partition=gpu
+#SBATCH --gres=gpu:1
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=16G
+#SBATCH --time=01:00:00
+#SBATCH --output=logs/%x-%j.out
+set -euo pipefail
+# Run from the extracted starter directory. Create logs/ BEFORE sbatch.
+cd &quot;$SLURM_SUBMIT_DIR&quot;
+export WLM_PROJECT_DIR=&quot;$PWD&quot;
+export OMP_NUM_THREADS=&quot;$SLURM_CPUS_PER_TASK&quot;
+export PYTHONUNBUFFERED=1
+export PYTHONNOUSERSITE=1
+CONDA_BASE_DIR=&quot;$(conda info --base)&quot;
+source &quot;$CONDA_BASE_DIR/etc/profile.d/conda.sh&quot;
+conda activate wlm
+cd &quot;$WLM_PROJECT_DIR&quot;
+nvidia-smi
+# Supply the writer-specific paths with: sbatch slurm/train.sbatch BASE MANIFEST OUT
+python -m wlm.train --base &quot;$1&quot; --manifest &quot;$2&quot; --output &quot;$3&quot; \
+  --method decoder --steps 200 --batch-size 4 --seed 0 --device cuda
+</code></pre></details><details><summary>Singularity.def</summary><pre><code>Bootstrap: docker
+From: python:3.10-slim
+
+%post
+    apt-get update
+    apt-get install -y --no-install-recommends git ca-certificates libglib2.0-0
+    rm -rf /var/lib/apt/lists/*
+    python -m pip install --no-cache-dir torch==2.5.1 --index-url https://download.pytorch.org/whl/cu121
+    python -m pip install --no-cache-dir numpy==1.26.4 Pillow==11.0.0 einops==0.8.0 opencv-python-headless==4.10.0.84 matplotlib==3.9.2
+
+%environment
+    export PYTHONNOUSERSITE=1
+    export PYTHONUNBUFFERED=1
+
+%runscript
+    exec python &quot;$@&quot;
+</code></pre></details><details><summary>requirements-analysis.txt</summary><pre><code>matplotlib==3.9.2
+</code></pre></details><details><summary>requirements-core.txt</summary><pre><code># Install torch separately for the chosen CPU/CUDA platform (see guide).
+numpy==1.26.4
+Pillow==11.0.0
+einops==0.8.0
+opencv-python-headless==4.10.0.84
+</code></pre></details><details><summary>requirements-ui.txt</summary><pre><code># Gradio is optional and can be installed after the training pipeline works.
+gradio==6.30.0
+</code></pre></details><details><summary>tests/test_core.py</summary><pre><code>&quot;&quot;&quot;Run after bootstrap: python -m unittest discover -s tests -v&quot;&quot;&quot;
+import json
+from pathlib import Path
+import tempfile
+import unittest
+import numpy as np
+import torch
+from PIL import Image
+from wlm.data import canonical, image_tensor, read_rows, write_rows
+from wlm.metrics import edit_distance, score_example
+from wlm.model import configure, load_model, training_mode
+from wlm.prepare import writer_splits
+from wlm.train import run_training
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+class CoreTests(unittest.TestCase):
+    def test_tokens_and_metrics(self):
+        self.assertEqual(canonical(r&quot;$\frac{x}{2}$&quot;), r&quot;\frac { x } { 2 }&quot;)
+        self.assertEqual(edit_distance([&quot;x&quot;, &quot;+&quot;, &quot;1&quot;], [&quot;x&quot;, &quot;+&quot;, &quot;2&quot;]), 1)
+        self.assertEqual(score_example(&quot;x ^ { 2 }&quot;, &quot;x ^ { 2 }&quot;)[&quot;ed&quot;], 0)
+        self.assertEqual(score_example(&quot;a&quot;, &quot;a + b&quot;)[&quot;ed&quot;], 2)
+
+    def test_input_polarity(self):
+        with tempfile.TemporaryDirectory() as name:
+            path = Path(name) / &quot;image.png&quot;
+            image = np.full((20, 20), 255, np.uint8)
+            image[8:12, 8:12] = 0
+            Image.fromarray(image).save(path)
+            tensor = image_tensor({&quot;image&quot;: str(path), &quot;polarity&quot;: &quot;dark_on_light&quot;})
+            self.assertEqual(float(tensor[0, 0, 0]), 0.0)
+            self.assertEqual(float(tensor[0, 9, 9]), 1.0)
+
+    def test_nested_writer_splits(self):
+        import argparse
+        with tempfile.TemporaryDirectory() as name:
+            folder = Path(name)
+            rows = [{&quot;id&quot;: str(i), &quot;image&quot;: str(folder / f&quot;{i}.png&quot;), &quot;latex&quot;: f&quot;x + {i}&quot;,
+                     &quot;writer_id&quot;: &quot;writer01&quot;, &quot;dataset&quot;: &quot;unit&quot;, &quot;polarity&quot;: &quot;dark_on_light&quot;}
+                    for i in range(160)]
+            manifest = folder / &quot;rows.jsonl&quot;
+            write_rows(manifest, rows)
+            writer_splits(argparse.Namespace(manifest=str(manifest), writers=None, seed=42,
+                                             output=str(folder / &quot;splits&quot;), test_size=50))
+            report = json.loads((folder / &quot;splits/split_report.json&quot;).read_text())
+            path = Path(report[0][&quot;folder&quot;])
+            sets = [{r[&quot;id&quot;] for r in read_rows(path / f&quot;adapt_{k}.jsonl&quot;)} for k in (10, 25, 50, 100)]
+            self.assertTrue(all(a &lt; b for a, b in zip(sets, sets[1:])))
+            self.assertFalse(sets[-1] &amp; {r[&quot;id&quot;] for r in read_rows(path / &quot;test.jsonl&quot;)})
+
+    def test_lora_identity_and_gradient(self):
+        from comer.utils.utils import ce_loss, to_bi_tgt_out
+        from wlm.data import make_batch
+        model, _ = load_model(ROOT / &quot;checkpoints/base.pt&quot;)
+        row = {&quot;image&quot;: str(ROOT / &quot;third_party/CoMER/example/UN19_1041_em_595.bmp&quot;),
+               &quot;polarity&quot;: &quot;light_on_dark&quot;, &quot;latex&quot;: &quot;x ^ { 2 }&quot;}
+        images, mask, labels = make_batch([row], &quot;cpu&quot;)
+        target, truth = to_bi_tgt_out(labels, torch.device(&quot;cpu&quot;))
+        model.eval()
+        with torch.no_grad():
+            reference = model(images, mask, target)
+        encoder_before = model.encoder.model.conv1.weight.detach().clone()
+        targets = configure(model, &quot;lora&quot;)
+        self.assertEqual(len(targets), 6)
+        self.assertEqual(sum(p.numel() for p in model.parameters() if p.requires_grad), 61440)
+        model.eval()
+        with torch.no_grad():
+            self.assertTrue(torch.allclose(reference, model(images, mask, target), atol=1e-6))
+        training_mode(model, &quot;lora&quot;)
+        loss = ce_loss(model(images, mask, target), truth)
+        loss.backward()
+        b_grad = sum(float(p.grad.abs().sum()) for n, p in model.named_parameters()
+                     if &quot;lora_B&quot; in n and p.grad is not None)
+        self.assertGreater(b_grad, 0)
+        self.assertTrue(all(p.grad is None for p in model.encoder.parameters()))
+        self.assertTrue(torch.equal(encoder_before, model.encoder.model.conv1.weight))
+
+    def test_decoder_freeze(self):
+        model, _ = load_model(ROOT / &quot;checkpoints/base.pt&quot;)
+        configure(model, &quot;decoder&quot;)
+        training_mode(model, &quot;decoder&quot;)
+        self.assertTrue(all(not p.requires_grad for p in model.encoder.parameters()))
+        self.assertFalse(model.encoder.training)
+        self.assertTrue(all(not m.training for m in model.modules() if isinstance(m, torch.nn.BatchNorm2d)))
+
+    def test_adapter_save_reload_and_resume(self):
+        with tempfile.TemporaryDirectory() as name:
+            folder = Path(name)
+            image = ROOT / &quot;third_party/CoMER/example/UN19_1041_em_595.bmp&quot;
+            manifest = folder / &quot;adapt.jsonl&quot;
+            write_rows(manifest, [{&quot;id&quot;: &quot;integration&quot;, &quot;image&quot;: str(image), &quot;latex&quot;: &quot;x ^ { 2 }&quot;,
+                                   &quot;writer_id&quot;: &quot;integration&quot;, &quot;dataset&quot;: &quot;unit&quot;, &quot;polarity&quot;: &quot;light_on_dark&quot;}])
+            checkpoint = run_training(ROOT / &quot;checkpoints/base.pt&quot;, manifest, folder / &quot;run&quot;,
+                                      method=&quot;lora&quot;, steps=1, batch_size=1, device=&quot;cpu&quot;, save_every=1)
+            _, raw = load_model(checkpoint)
+            self.assertEqual(raw[&quot;step&quot;], 1)
+            self.assertEqual(len(raw[&quot;adapter_state&quot;]), 12)
+            self.assertLess(Path(checkpoint).stat().st_size, 2_000_000)
+            run_training(ROOT / &quot;checkpoints/base.pt&quot;, manifest, folder / &quot;run&quot;, method=&quot;lora&quot;,
+                         steps=2, batch_size=1, device=&quot;cpu&quot;, save_every=1, resume=checkpoint)
+            _, raw = load_model(checkpoint)
+            self.assertEqual(raw[&quot;step&quot;], 2)
+
+
+if __name__ == &quot;__main__&quot;:
+    torch.set_num_threads(2)
+    unittest.main()
+</code></pre></details></section><footer>Write Like Me · Original experiment starter · Prepared 20 October 2026</footer></main><script>
+const size=document.getElementById('fontSize');
+if(size)size.addEventListener('input',()=>document.documentElement.style.fontSize=size.value+'px');
+document.querySelectorAll('pre').forEach(pre=>{let b=document.createElement('button');b.className='copy';b.textContent='Copy';b.addEventListener('click',async()=>{let t=pre.querySelector('code').textContent;try{await navigator.clipboard.writeText(t)}catch(e){let a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();document.execCommand('copy');a.remove()}b.textContent='Copied';setTimeout(()=>b.textContent='Copy',1500)});pre.prepend(b)});
+</script></body></html>

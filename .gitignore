@@ -1,0 +1,10 @@
+third_party/
+checkpoints/
+data/
+runs/
+results/
+demo_sessions/
+logs/
+*.sif
+__pycache__/
+*.pyc
