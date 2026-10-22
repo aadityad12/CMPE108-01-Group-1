@@ -1,0 +1,80 @@
+diff --git a/comer/datamodule/__init__.py b/comer/datamodule/__init__.py
+index 38e1f69..521cba7 100644
+--- a/comer/datamodule/__init__.py
++++ b/comer/datamodule/__init__.py
+@@ -1,11 +1,2 @@
+-from .datamodule import Batch, CROHMEDatamodule
+ from .vocab import vocab
+-
+ vocab_size = len(vocab)
+-
+-__all__ = [
+-    "CROHMEDatamodule",
+-    "vocab",
+-    "Batch",
+-    "vocab_size",
+-]
+diff --git a/comer/model/comer.py b/comer/model/comer.py
+index c227822..d4b9ed8 100644
+--- a/comer/model/comer.py
++++ b/comer/model/comer.py
+@@ -1,6 +1,6 @@
+ from typing import List
+ 
+-import pytorch_lightning as pl
++from comer import _compat as pl
+ import torch
+ from torch import FloatTensor, LongTensor
+ 
+diff --git a/comer/model/encoder.py b/comer/model/encoder.py
+index 786dc42..61e097d 100644
+--- a/comer/model/encoder.py
++++ b/comer/model/encoder.py
+@@ -1,7 +1,7 @@
+ import math
+ from typing import Tuple
+ 
+-import pytorch_lightning as pl
++from comer import _compat as pl
+ import torch
+ import torch.nn as nn
+ import torch.nn.functional as F
+diff --git a/comer/model/pos_enc.py b/comer/model/pos_enc.py
+index 5914be2..e6f0448 100644
+--- a/comer/model/pos_enc.py
++++ b/comer/model/pos_enc.py
+@@ -1,7 +1,7 @@
+ import math
+ from typing import Optional
+ 
+-import pytorch_lightning as pl
++from comer import _compat as pl
+ import torch
+ from einops import rearrange, repeat
+ 
+diff --git a/comer/utils/generation_utils.py b/comer/utils/generation_utils.py
+index 3a40520..332475e 100644
+--- a/comer/utils/generation_utils.py
++++ b/comer/utils/generation_utils.py
+@@ -1,7 +1,7 @@
+ from abc import abstractmethod
+ from typing import List, Tuple
+ 
+-import pytorch_lightning as pl
++from comer import _compat as pl
+ import torch
+ import torch.nn.functional as F
+ from comer.datamodule import vocab, vocab_size
+diff --git a/comer/utils/utils.py b/comer/utils/utils.py
+index ba0fe47..a202355 100644
+--- a/comer/utils/utils.py
++++ b/comer/utils/utils.py
+@@ -5,7 +5,7 @@ import torch.nn.functional as F
+ from comer.datamodule import vocab
+ from einops import rearrange
+ from torch import LongTensor
+-from torchmetrics import Metric
++from comer._compat import Metric
+ 
+ 
+ class Hypothesis:

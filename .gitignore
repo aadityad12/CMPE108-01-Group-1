@@ -8,3 +8,4 @@ logs/
 *.sif
 __pycache__/
 *.pyc
+.venv/
