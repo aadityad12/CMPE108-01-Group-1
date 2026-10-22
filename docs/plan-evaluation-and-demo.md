@@ -24,10 +24,11 @@ Status key: `[x]` done, `[ ]` to do. Each item should land as its own small comm
 
 ## Phase 2: Base-model reference numbers (Mac, no HPC needed)
 
-- [ ] Export the bundled CROHME 2019 test set (1,199 images) to `data/general_2019.jsonl`
-- [ ] Smoke evaluation on 20 images; record time per image
-- [ ] Full base evaluation on CROHME 2019 on CPU (exploratory; feeds error-analysis tooling)
-- [ ] Record results in `docs/eval-log.md`
+- [x] Export the bundled CROHME 2019 test set (1,199 images) to `data/general_2019.jsonl`
+- [x] Smoke evaluation on 20 images; record time per image
+- [x] Full base evaluation on CROHME 2019 on CPU: 62.64% exact (exploratory; feeds
+      error-analysis tooling)
+- [x] Record results in [eval-log.md](eval-log.md)
 
 Final paper numbers for the base are re-run on the HPC on the same device as the
 adapted models. That is one short job, not a sweep.
