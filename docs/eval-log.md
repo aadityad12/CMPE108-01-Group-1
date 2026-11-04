@@ -5,6 +5,34 @@ Raw outputs live in `runs/` (git-ignored); this file keeps the numbers.
 
 Metrics are token-level (see `wlm/metrics.py`), not official CROHME symbol-graph scores.
 
+## 2026-11-03 · Error analysis of the base model on CROHME 2019
+
+Command: `python -m wlm.compare --base runs/mac_reference/base_general_2019/predictions.jsonl --output results/error_analysis/base_2019 --review 30`.
+Error types come from a token alignment (`wlm/compare.py`); they are suggestions that the
+manual review confirms, not a structural evaluator.
+
+| Token errors in the 448 wrong predictions | Count |
+|---|---|
+| Symbol substitution | 601 |
+| Brace error | 381 |
+| Missing symbol | 209 |
+| Layout (`^`, `_`, `\frac`, `\sqrt`, `\limits`) | 178 |
+| Extra symbol | 150 |
+
+- 175 of 448 wrong predictions (39.1%) are wrong by **one symbol substitution only**.
+- Most frequent substitutions: `C→c` 19, `\ldots→\cdots` 16, `X→x` 16, `|→1` 11, `9→q` 10,
+  `P→p` 10, `S→5` 9, `r→\gamma` 8, `V→v` 8, `z→2` 7.
+- Case-only confusions (same letter, other case) are 82 of 601 substitutions (13.6%).
+- These are glyph-shape ambiguities that depend on how a person writes, which is what
+  writer personalization should be able to fix. Watch these pairs in the writer study.
+- 30-case review sheet: `results/error_analysis/base_2019/review.html` (manual tags to do).
+
+## 2026-11-03 · Reproduction from a fresh clone
+
+Rebuilt `.venv` from `env/mac-cpu-lock.txt`, reran `bootstrap.py`: identical `base.pt`
+hash (`2bb8c70d…109f`). Reran the full base evaluation below: **identical metrics** on every
+field. Decode time 1,565 s (≈1.3 s/image). The CPU pipeline is deterministic.
+
 ## 2026-10-21 · Base model on bundled CROHME 2019 (Mac CPU reference)
 
 | Field | Value |
