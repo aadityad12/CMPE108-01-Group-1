@@ -26,7 +26,7 @@ python bootstrap.py              # downloads pinned CoMER + weights (~1 min)
 python -m unittest discover -s tests -v
 ```
 
-Expected: `checkpoints/base.pt`, `Model parameters: 6,389,041`, and 6 passing tests.
+Expected: `checkpoints/base.pt`, `Model parameters: 6,389,041`, and 9 passing tests (6 core, 3 for `wlm.compare`).
 
 ## First prediction
 
