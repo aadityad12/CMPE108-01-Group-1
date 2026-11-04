@@ -23,3 +23,10 @@ The supplied learning rates and update budgets are starting configurations to tu
 on development writers. They are not claimed to be optimal.
 
 Source pin: `ee15cdbe02467fd29f386fd554b4bc2185110fcc`.
+
+## Project docs
+
+- [Report draft](docs/report-draft.md): abstract, literature survey, approach, results so far
+- [Team plan](docs/plan-team.md): who owns what, current status, order of work
+- [HPC plan](docs/plan-hpc.md) · [Evaluation and demo plan](docs/plan-evaluation-and-demo.md)
+- [Evaluation log](docs/eval-log.md): every measured number · [Mac setup](docs/setup-mac.md)
