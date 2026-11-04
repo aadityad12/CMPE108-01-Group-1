@@ -1,6 +1,7 @@
 # Work plan: evaluation and demo (Aaditya)
 
-Owner: Aaditya. Teammates: Jeriel (model, training, HPC jobs), Aidana (data, labels, splits).
+Owner: Aaditya. Teammates: Jeriel (model, training, HPC jobs: [plan-hpc.md](plan-hpc.md)),
+Aidana (data, labels, splits). Overview: [plan-team.md](plan-team.md).
 See `GUIDE.html` sections 8, 11, 12 and 13 for the underlying protocol.
 
 Goal: everything needed to turn trained checkpoints into honest numbers, plots,
@@ -37,13 +38,21 @@ adapted models. That is one short job, not a sweep.
 
 The guide asks for 20–30 manually reviewed changed cases (base vs. adapted).
 
-- [ ] Script that pairs two `predictions.jsonl` files by id and lists improved / regressed /
+- [x] Script that pairs two `predictions.jsonl` files by id and lists improved / regressed /
       unchanged cases with edit distances
-- [ ] HTML contact sheet: image, ground truth, base prediction, adapted prediction
+- [x] HTML contact sheet: image, ground truth, base prediction, adapted prediction
 - [ ] Error categories to tag by hand: symbol substitution (1/l, x/×), lost braces or
       structure, missing/extra symbols, layout (fractions, scripts)
-- [ ] Test it on two real prediction files (e.g. base vs. beam-size-2 base) before adapted
-      models exist
+- [x] Test it on two real prediction files: base vs. the CPU-pilot adapted models
+      (`wlm.compare`; see [eval-log.md](eval-log.md))
+- [x] Automatic error types from token alignment; base error breakdown on CROHME 2019
+- [ ] Hand-tag the 30-case base review sheet and check agreement with the automatic types
+
+## Phase 3b: CPU pilot of the three methods
+
+- [x] Full, decoder, LoRA on 10 hard CROHME 2014 images; support fit, held-out, general,
+      cost (`scripts/cpu_pilot.sh`, results in [eval-log.md](eval-log.md))
+- [x] LoRA at 50/100/200 updates
 
 ## Phase 4: Team writer evaluation (after Aidana's pilot data)
 
@@ -56,7 +65,8 @@ The guide asks for 20–30 manually reviewed changed cases (base vs. adapted).
 - [ ] `pip install -r requirements-ui.txt` into the venv; `python app.py --device cpu`
 - [ ] Guide's demo checklist: base recognition, successful adaptation, new-image
       recognition, missing-label error, duplicate-filename error, unsupported-token error
-- [ ] Measure adaptation latency on the Mac (LoRA, 10 images)
+- [x] Measure adaptation latency on the Mac (LoRA, 10 images): ≈26 s at 200 steps, ≈7 s at 50
+      (training only, from the CPU pilot; recheck through the UI)
 - [ ] Decide where the presentation demo runs (Mac CPU vs. HPC with SSH tunnel)
 
 ## Phase 6: Results and figures (after Jeriel's runs)
@@ -67,6 +77,9 @@ The guide asks for 20–30 manually reviewed changed cases (base vs. adapted).
 - [ ] Paired image / base / adapted figure from the error-analysis tool
 
 ## Phase 7: Report sections I own
+
+Draft: [report-draft.md](report-draft.md) (abstract, related work, approach, results so far).
+
 
 - [ ] Evaluation protocol and metric definitions
 - [ ] Experimental results: tables, learning curve, forgetting, error analysis

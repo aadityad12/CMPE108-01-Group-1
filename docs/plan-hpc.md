@@ -56,8 +56,12 @@ directly comparable. Build the pilot manifests exactly as in `docs/eval-log.md`
 The guide's learning rates are starting points. Tune on **development** writers only,
 never on the three evaluation writers' test files.
 
-- [ ] For each method, try 2–3 learning rates and 2 step budgets (e.g. 200, 400) at k=10 and
-      k=100 on one development writer. Pick by held-out development accuracy
+- [ ] For each method, try 3 learning rates and 3 step budgets at k=10 and k=100 on one
+      development writer. Pick by held-out development accuracy. The CPU pilot
+      (`docs/eval-log.md`, 2026-11-03) found that the defaults memorize 10 images within
+      50 steps and hurt unseen images, so search **downward**: LoRA {1e-4, 3e-4, 1e-3},
+      decoder {1e-5, 2e-5, 5e-5}, full {2e-6, 5e-6, 1e-5}; steps {25, 50, 200}.
+      That is 27 short runs per k, a few GPU-minutes each
 - [ ] Freeze the choice in a short note (`docs/hpc-settings.md`): method, lr, steps, batch,
       augment on/off, LoRA rank. **Do not change it after the final sweep starts**
 
