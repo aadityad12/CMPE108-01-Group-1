@@ -5,6 +5,69 @@ Raw outputs live in `runs/` (git-ignored); this file keeps the numbers.
 
 Metrics are token-level (see `wlm/metrics.py`), not official CROHME symbol-graph scores.
 
+## 2026-11-03 · CPU pilot: full, decoder and LoRA on 10 hard images
+
+**Not a personalization result.** The support images come from many CROHME 2014 writers
+(no IDs). The pilot checks that each method trains and decodes end to end, whether it can fit
+a tiny support set (guide stage 2), what it does to images it never saw, and what it costs.
+
+Setup:
+
+- Screen: 60 random CROHME 2014 test images (`random.Random(7)`), base 63.3% exact.
+- Support: the first 10 screened images the base got wrong with ED 1–4 and in-vocabulary
+  labels → `data/pilot/support_10.jsonl` (writer ID set to `pilot-crohme2014`).
+- Held-out: the other 50 screened 2014 images; general: 200 fixed CROHME 2019 images
+  (`random.Random(0)`). Neither overlaps the support set.
+- 200 steps, batch 4, seed 0, default LRs (full 1e-5, decoder 5e-5, LoRA 1e-3), beam 10,
+  Mac M1 Pro CPU. Command: `scripts/cpu_pilot.sh`. LoRA at 50 and 100 steps: same command
+  with `--steps 50|100 --output runs/pilot_cpu/lora_s50|lora_s100`.
+
+Exact match % (mean token ED):
+
+| Model | Support (10) | Held-out 2014 (50) | General 2019 (200) |
+|---|---|---|---|
+| Base | 0.0 (2.10) | 76.0 (0.82) | 67.5 (0.94) |
+| Full, 200 steps | 100.0 (0) | 62.0 (0.88) | 63.5 (1.03) |
+| Decoder, 200 steps | 100.0 (0) | 70.0 (0.92) | 61.5 (1.05) |
+| LoRA, 200 steps | 100.0 (0) | 66.0 (0.84) | 62.0 (1.01) |
+| LoRA, 100 steps | 100.0 (0) | 66.0 (0.88) | 63.5 (0.96) |
+| LoRA, 50 steps | 100.0 (0) | 66.0 (0.80) | 62.0 (1.06) |
+
+Exact-match discordant pairs vs. base, fixed / broken (exact McNemar p), from `wlm.compare`:
+
+| Model | Held-out 2014 | General 2019 |
+|---|---|---|
+| Full | 1 / 8 (p = 0.039) | 10 / 18 (p = 0.18) |
+| Decoder | 1 / 4 (p = 0.38) | 5 / 17 (p = 0.017) |
+| LoRA 200 | 0 / 5 (p = 0.063) | 6 / 17 (p = 0.035) |
+| LoRA 100 | 0 / 5 (p = 0.063) | 8 / 16 (p = 0.15) |
+| LoRA 50 | 0 / 5 (p = 0.063) | 5 / 16 (p = 0.027) |
+
+Cost (200 steps, CPU):
+
+| Method | Trainable params | Train time | Checkpoint (incl. optimizer) |
+|---|---|---|---|
+| Full | 6,389,041 | 84.8 s | 74.1 MiB |
+| Decoder | 3,232,417 | 28.4 s | 49.8 MiB |
+| LoRA r=8 | 61,440 | 25.5 s (6.8 s at 50 steps) | 0.73 MiB |
+
+Findings:
+
+- Every method memorizes the 10 support images (0% → 100%) and all lose accuracy on unseen
+  images (held-out −6 to −14 pp, general −4 to −6 pp). Sample sizes are small; only some
+  drops reach p < 0.05.
+- **The new errors mirror what the support set taught.** Support corrections included
+  `M→m`, `s/5→S`, `.→,`, `3→B`; the regressions are dominated by `M→m`, `s→S`, `.→,`,
+  `\beta→B`. Adaptation moves the decision boundary between ambiguous glyph pairs. For one
+  writer that is the intended effect; for other writers it is interference. This supports
+  per-writer, switchable adapters.
+- LoRA at 50 steps already fits the support set and does the same damage, so the update
+  count is not the main lever in this range. **The HPC development tuning should try
+  lower learning rates** (e.g. LoRA 1e-4 / 3e-4) and smaller budgets (10–25 steps).
+- LoRA trains about as fast as decoder tuning on CPU (the encoder forward pass dominates)
+  but stores 68× less. Full tuning is 3× slower.
+- On the Mac, a 10-image LoRA adaptation for the demo takes ≈26 s (200 steps) or ≈7 s (50 steps).
+
 ## 2026-11-03 · Error analysis of the base model on CROHME 2019
 
 Command: `python -m wlm.compare --base runs/mac_reference/base_general_2019/predictions.jsonl --output results/error_analysis/base_2019 --review 30`.
