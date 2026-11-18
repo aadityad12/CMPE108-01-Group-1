@@ -5,6 +5,28 @@ Raw outputs live in `runs/` (git-ignored); this file keeps the numbers.
 
 Metrics are token-level (see `wlm/metrics.py`), not official CROHME symbol-graph scores.
 
+## 2026-11-17 · Base model on the evaluation writers' test sets (Mac CPU)
+
+Before any adaptation. Test sets are frozen (seed 42, see `docs/dataset/README.md`).
+Beam 10. Command per writer:
+`python -m wlm.predict evaluate --checkpoint checkpoints/base.pt --manifest data/writers/<group>/<writer>/test.jsonl --output runs/study/base/<writer> --kind writer --as-base --device cpu`
+
+| Writer | Test n | Exact | Within 1 | Within 2 | Mean ED |
+|---|---|---|---|---|---|
+| team01 (own handwriting, phone photos) | 50 | 54.0% | 84.0% | 90.0% | 0.92 |
+| CROHME23 J021 | 25 | 32.0% | 56.0% | 68.0% | 2.80 |
+| CROHME23 J022 | 25 | 48.0% | 60.0% | 76.0% | 1.92 |
+| CROHME23 J023 | 25 | 48.0% | 60.0% | 64.0% | 5.04 |
+| CROHME23 J024 | 25 | 36.0% | 48.0% | 56.0% | 1.84 |
+| CROHME23 J025 | 25 | 52.0% | 68.0% | 76.0% | 1.84 |
+| CROHME23, all 5 pooled | 125 | 43.2% | 58.4% | 68.0% | 2.69 |
+
+- team01: 30% of test formulas are wrong by exactly one token. That is the
+  room writer personalization is meant to close.
+- The 2023 writers score well below the CROHME 2019 test set (62.6%). They are
+  new writers on paper scans, so this is a harder, more realistic setting.
+- Development writers J011, J012, J015 (tuning only): 22.7% exact on average.
+
 ## 2026-11-17 · Demo dry run on the Mac (CPU)
 
 `python app.py --device cpu`, driven through its two endpoints (adapt, recognize)
