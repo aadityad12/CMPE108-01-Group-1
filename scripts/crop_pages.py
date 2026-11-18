@@ -165,6 +165,26 @@ def trim(mask, y0, y1):
     return x0, y0 + ys[0], x1, y0 + ys[-1] + 1
 
 
+def clean_crop(image, mask, box, scale):
+    """Dark ink on pure white, like the training images: grid lines, paper
+    texture and shadows are removed, ink keeps its shading."""
+    x0, y0, x1, y1 = box
+    gray = np.asarray(image, dtype=float)[y0:y1, x0:x1]
+    ink = mask[y0:y1, x0:x1]
+    # Slightly widen the ink area so stroke edges keep their anti-aliasing.
+    import cv2
+    ink = cv2.dilate(np.uint8(ink), np.ones((3, 3), np.uint8)) > 0
+    dark = np.percentile(gray[ink], 5) if ink.any() else 0
+    paper = np.median(gray[~ink]) if (~ink).any() else 255
+    stretched = np.clip((gray - dark) / max(1.0, paper - dark), 0, 1) * 255
+    clean = np.where(ink, stretched, 255).astype(np.uint8)
+    result = Image.fromarray(clean)
+    if scale != 1:
+        size = (max(1, round(result.width * scale)), max(1, round(result.height * scale)))
+        result = result.resize(size, Image.Resampling.LANCZOS)
+    return result
+
+
 def thumbnail(image):
     copy = image.copy()
     copy.thumbnail((600, 90))
@@ -183,6 +203,8 @@ def main():
     parser.add_argument("--shadow-pages", default="",
                         help="Pages with a shadow on the paper, e.g. 6,10. These use a lower "
                              "brightness cutoff so shaded paper still counts as paper.")
+    parser.add_argument("--scale", type=float, default=1.0,
+                        help="Resize factor for the saved crops")
     parser.add_argument("--corrections",
                         help="TSV of number<TAB>label<TAB>reason for formulas written "
                              "differently from the prompt; the label must match the page")
@@ -229,8 +251,9 @@ def main():
                 continue
             pad = 12
             x0, ya, x1, yb = box
-            crop = image.crop((max(0, x0 - pad), max(0, ya - pad),
-                               min(image.width, x1 + pad), min(image.height, yb + pad)))
+            box = (max(0, x0 - pad), max(0, ya - pad),
+                   min(image.width, x1 + pad), min(image.height, yb + pad))
+            crop = clean_crop(image, mask, box, args.scale)
             name = f"{args.writer}-{number:03d}"
             crop.save(out / "images" / f"{name}.png")
             rows.append({"id": name, "image": str((out / "images" / f"{name}.png").resolve()),

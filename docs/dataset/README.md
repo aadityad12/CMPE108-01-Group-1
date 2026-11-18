@@ -37,6 +37,10 @@ python scripts/crop_pages.py --photos data/raw/team/aaditya --writer team01 \
 - Every crop was checked by eye against its label. 11 labels were changed to
   match what was written (slashed fractions, a dot before `dx`, dot height,
   one sum limit). See [team01-corrections.tsv](team01-corrections.tsv).
+- Crops are saved as dark ink on pure white (grid and shadows removed), like
+  the training images. Raw grayscale crops gave the base model 0% exact on
+  the 109 non-test images; clean crops give 51.4%. Scale 1.0 was best
+  (1.5: 43.1%, 2: 44.0%, 3: 17.4%), chosen on non-test images only.
 - Audit: 159 rows, no out-of-vocabulary tokens.
 - Consent: the writer agreed to use this handwriting in the report and demo.
 
