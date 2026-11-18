@@ -1,0 +1,12 @@
+number	label	reason
+6	1 / 2	written with a slash, not stacked
+22	\int _ { 0 } ^ { 1 } x \cdot d x	dot written before dx
+67	1 , 2 , \cdots , n	dots written at middle height
+68	a _ { 1 } + a _ { 2 } + \ldots + a _ { n }	dots written on the baseline
+71	\int f ( x ) \cdot d x	dot written before dx
+72	\int _ { a } ^ { b } g ( t ) \cdot d t	dot written before dt
+124	\int _ { 0 } ^ { \pi } \sin x \cdot d x = 2	dot written before dx
+125	\int _ { 1 } ^ { e } \frac { 1 } { x } \cdot d x = 1	dot written before dx
+131	9 ^ { 1 / 2 } = 3	exponent written with a slash
+140	\sum \limits _ { n = 1 } ^ { n } \frac { 1 } { n ^ { 2 } } = \frac { \pi ^ { 2 } } { 6 }	upper limit written as n
+159	\int _ { - \infty } ^ { \infty } e ^ { - x ^ { 2 } } \cdot d x = \sqrt { \pi }	dot written before dx

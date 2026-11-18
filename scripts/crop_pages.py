@@ -31,6 +31,7 @@ import numpy as np
 from PIL import Image, ImageFilter, ImageOps
 
 PER_PAGE = 10
+PAPER_CUTOFF = 1.0  # Share of the automatic brightness cutoff that counts as paper.
 
 
 def load_photo(path):
@@ -46,15 +47,54 @@ def load_photo(path):
     return image
 
 
-def ink_mask(image):
-    """True where there is ink. Dividing by a blurred copy removes shadows."""
-    background = np.asarray(image.filter(ImageFilter.GaussianBlur(25)), dtype=float) + 1
-    ratio = np.asarray(image, dtype=float) / background
-    mask = ratio < 0.75
-    # Ignore a thin border, where page edges and table shadows show up.
-    edge = int(0.02 * min(mask.shape))
-    mask[:edge, :] = mask[-edge:, :] = mask[:, :edge] = mask[:, -edge:] = False
-    return mask
+def paper_region(gray, cutoff=None):
+    """True inside the sheet of paper. The paper is the largest bright area;
+    carpet, desk and the notebook spine are darker or textured."""
+    import cv2
+    blur = cv2.GaussianBlur(gray, (51, 51), 0)
+    level, _ = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    # A bit below the automatic cutoff, so shadowed paper still counts.
+    bright = np.uint8(blur > (cutoff or PAPER_CUTOFF) * level) * 255
+    count, labels, stats, _ = cv2.connectedComponentsWithStats(bright)
+    largest = 1 + np.argmax(stats[1:, cv2.CC_STAT_AREA])
+    paper = np.uint8(labels == largest) * 255
+    # Fill shadows and ink inside the sheet, then pull in from the edges.
+    hull = cv2.convexHull(cv2.findNonZero(paper))
+    filled = np.zeros_like(paper)
+    cv2.fillPoly(filled, [hull], 255)
+    margin = int(0.03 * min(gray.shape))
+    return cv2.erode(filled, np.ones((margin, margin), np.uint8)) > 0
+
+
+def ink_mask(image, cutoff=None):
+    """True where there is pen ink on the paper."""
+    import cv2
+    gray = np.asarray(image, dtype=np.uint8)
+    # Dividing by a blurred copy evens out shadows across the page.
+    background = cv2.GaussianBlur(gray, (0, 0), 25).astype(float) + 1
+    paper = paper_region(gray, cutoff)
+    mask = (gray / background < 0.65) & paper
+    # Carpet or fabric shows up as dense texture over a large area; pen
+    # strokes never fill that much of their surroundings. Remove such areas.
+    density = cv2.blur(mask.astype(np.float32), (61, 61))
+    texture = cv2.dilate(np.uint8(density > 0.25), np.ones((31, 31), np.uint8)) > 0
+    mask &= ~texture
+    # Keep stroke-like pieces. Drop specks and long thin lines (grid lines,
+    # page edges), which handwriting never forms on its own.
+    count, labels, stats, _ = cv2.connectedComponentsWithStats(np.uint8(mask))
+    # Pieces touching the edge of the paper are carpet or page curl; the
+    # handwriting never reaches the edge.
+    rim = paper & ~cv2.erode(np.uint8(paper), np.ones((15, 15), np.uint8)).astype(bool)
+    on_rim = set(np.unique(labels[rim & mask]))
+    keep = np.zeros(count, bool)
+    height, width = mask.shape
+    for i in range(1, count):
+        x, y, w, h, area = stats[i]
+        # Only long thin pieces count as lines, so strokes like f, 1 or a prime stay.
+        thin_line = (w <= 4 and h > 8 * max(w, 1) and h > 0.03 * height) or \
+                    (h <= 4 and w > 8 * max(h, 1) and w > 0.2 * width)
+        keep[i] = area >= 8 and not thin_line and h < 0.15 * height and i not in on_rim
+    return keep[labels]
 
 
 def gap_runs(empty):
@@ -72,19 +112,37 @@ def gap_runs(empty):
 
 
 def split_lines(mask, count):
-    """Row ranges of `count` formula lines, cut at the widest gaps."""
+    """Row ranges of `count` formula lines.
+
+    Finds bands of rows with ink, ignores faint bands (specks, a dotted page
+    edge), joins the strong bands into `count` lines at the widest gaps, and
+    cuts halfway between neighbouring lines so small marks like dots and
+    primes stay with their formula.
+    """
     rows = mask.sum(axis=1)
     empty = rows <= max(2, 0.002 * mask.shape[1])
-    ink_rows = np.flatnonzero(~empty)
-    if len(ink_rows) == 0:
+    bands = gap_runs(~empty)
+    if not bands:
         raise ValueError("no ink found")
-    top, bottom = ink_rows[0], ink_rows[-1] + 1
-    inner = [(s, e) for s, e in gap_runs(empty[top:bottom])]
-    if len(inner) < count - 1:
-        raise ValueError(f"found {len(inner) + 1} lines, expected {count}")
-    widest = sorted(inner, key=lambda r: r[1] - r[0], reverse=True)[:count - 1]
-    cuts = sorted(top + (s + e) // 2 for s, e in widest)
-    edges = [top] + cuts + [bottom]
+    masses = [rows[s:e].sum() for s, e in bands]
+    typical = float(np.median(sorted(masses, reverse=True)[:count]))
+    # A real line has some ink and some height; specks and dotted page
+    # edges are faint or very flat.
+    strong = [(s, e) for (s, e), m in zip(bands, masses)
+              if m >= 0.1 * typical and e - s >= 0.0095 * mask.shape[0]]
+    if len(strong) < count:
+        raise ValueError(f"found {len(strong)} lines, expected {count}")
+    order = sorted(range(len(strong) - 1), key=lambda i: strong[i + 1][0] - strong[i][1], reverse=True)
+    cuts = sorted(order[:count - 1])
+    groups, first = [], 0
+    for cut in cuts + [len(strong) - 1]:
+        groups.append([strong[first][0], strong[cut][1]])
+        first = cut + 1
+    # Widen each line to the midpoint of the gap on each side.
+    reach = int(0.02 * mask.shape[0])
+    edges = [max(0, groups[0][0] - reach)]
+    edges += [(groups[i][1] + groups[i + 1][0]) // 2 for i in range(len(groups) - 1)]
+    edges += [min(mask.shape[0], groups[-1][1] + reach)]
     return list(zip(edges[:-1], edges[1:]))
 
 
@@ -122,14 +180,31 @@ def main():
     parser.add_argument("--first-page", type=int, default=1, help="Page number of the first photo")
     parser.add_argument("--output", default="data/team")
     parser.add_argument("--session", default="session01")
+    parser.add_argument("--shadow-pages", default="",
+                        help="Pages with a shadow on the paper, e.g. 6,10. These use a lower "
+                             "brightness cutoff so shaded paper still counts as paper.")
+    parser.add_argument("--corrections",
+                        help="TSV of number<TAB>label<TAB>reason for formulas written "
+                             "differently from the prompt; the label must match the page")
+    parser.add_argument("--skip", action="append", default=[], metavar="PAGE:LINE",
+                        help="A crossed-out line to ignore, e.g. 11:10 = 10th line on page 11")
     args = parser.parse_args()
 
     formulas = [l.strip() for l in Path("prompts/formulas.txt").read_text().splitlines() if l.strip()]
+    if args.corrections:
+        for line in Path(args.corrections).read_text().splitlines()[1:]:
+            number, label, _reason = line.split("\t")
+            formulas[int(number) - 1] = label
     photos = sorted(p for p in Path(args.photos).iterdir()
                     if p.suffix.lower() in {".jpg", ".jpeg", ".png", ".heic", ".heif"})
     out = Path(args.output)
     (out / "images").mkdir(parents=True, exist_ok=True)
     rows, cards, problems = [], [], []
+
+    skips = {}
+    for item in args.skip:
+        page, line = map(int, item.split(":"))
+        skips.setdefault(page, set()).add(line - 1)
 
     for page, photo in enumerate(photos, args.first_page):
         first = (page - 1) * PER_PAGE
@@ -138,12 +213,14 @@ def main():
             problems.append(f"{photo.name}: page {page} has no formulas")
             continue
         image = load_photo(photo)
-        mask = ink_mask(image)
+        shadow = str(page) in args.shadow_pages.split(",")
+        mask = ink_mask(image, 0.85 if shadow else None)
         try:
-            lines = split_lines(mask, len(labels))
+            lines = split_lines(mask, len(labels) + len(skips.get(page, ())))
         except ValueError as error:
             problems.append(f"{photo.name} (page {page}): {error}")
             continue
+        lines = [line for i, line in enumerate(lines) if i not in skips.get(page, ())]
         for offset, ((y0, y1), latex) in enumerate(zip(lines, labels)):
             number = first + offset + 1
             box = trim(mask, y0, y1)
