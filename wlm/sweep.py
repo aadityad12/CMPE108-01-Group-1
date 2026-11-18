@@ -17,6 +17,9 @@ def main():
     p.add_argument("--budgets", default="10,25,50,100")
     p.add_argument("--seeds", default="0,1,2")
     p.add_argument("--steps", type=int, default=200)
+    p.add_argument("--settings", help="Tuned per-method settings, e.g. "
+                   "lora:3e-4:50,decoder:2e-5:50,full:5e-6:50 (method:lr:steps). "
+                   "Overrides --steps and the default learning rates for those methods.")
     p.add_argument("--batch-size", type=int, default=4)
     p.add_argument("--general", help="Optional fixed, held-out general test manifest")
     p.add_argument("--augment", action="store_true")
@@ -27,6 +30,11 @@ def main():
     args = parser.parse_args()
     if args.command == "plan":
         report = json.loads((Path(args.splits) / "split_report.json").read_text())
+        tuned = {}
+        for item in (args.settings or "").split(","):
+            if item:
+                method, lr, steps = item.split(":")
+                tuned[method] = (float(lr), int(steps))
         jobs = []
         for row in report:
             if row["status"] != "ready":
@@ -35,7 +43,10 @@ def main():
             for method in args.methods.split(","):
                 if method not in ("full", "decoder", "lora"):
                     raise ValueError(method)
+                lr, steps = tuned.get(method, (None, args.steps))
                 for k in map(int, args.budgets.split(",")):
+                    if k not in row.get("budgets", [10, 25, 50, 100]):
+                        continue  # Writer has fewer formulas than this budget.
                     for seed in map(int, args.seeds.split(",")):
                         support = folder / f"adapt_{k}.jsonl"
                         test = folder / "test.jsonl"
@@ -45,7 +56,7 @@ def main():
                                      "test": str(test), "test_sha256": file_sha256(test),
                                      "output": str((Path(args.output) / folder.name / method /
                                                     f"k{k}_s{seed}").resolve()),
-                                     "method": method, "seed": seed, "steps": args.steps,
+                                     "method": method, "seed": seed, "steps": steps, "lr": lr,
                                      "batch_size": args.batch_size, "augment": args.augment,
                                      "general": str(Path(args.general).resolve()) if args.general else None,
                                      "general_sha256": file_sha256(args.general) if args.general else None})
@@ -65,6 +76,7 @@ def main():
         current = folder / "model.pt"
         checkpoint = run_training(**{k: job[k] for k in ("base", "manifest", "output", "method",
                                                          "seed", "steps", "batch_size", "augment")},
+                                  lr=job.get("lr"),
                                   device=args.device, resume=str(current) if current.exists() else None)
         evaluate(checkpoint, job["test"], folder / "writer", device=args.device)
         if job["general"]:
