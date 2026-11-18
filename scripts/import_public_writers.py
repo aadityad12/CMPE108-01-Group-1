@@ -9,10 +9,13 @@ Two sources, both from CROHME23.zip (https://zenodo.org/records/8428035):
    format. Their images are paper scans, so they are cropped to the ink,
    cleaned up and scaled to match the training images.
 
-2. CROHME 2019 training writer User002 (199 distinct formulas). Its images and
-   clean labels come from CoMER's bundled training data, joined by file name.
-   The base model was trained on this writer, so it is only used as a
-   development writer for tuning settings, never for reported results.
+2. CROHME 2023 training writers J011, J012 and J015 (about 35 formulas each),
+   also unseen by the base model. These are development writers: they are only
+   used to tune learning rates and step counts, never for reported results.
+
+CROHME 2019 writer User002 (199 formulas) was tried as a development writer,
+but the base model already reads its test set perfectly (100% exact; it was
+in CoMER's training data), so it cannot show whether tuning helps.
 
 Usage (after extracting the archive to data/raw/crohme23):
   PYTHONPATH=. python scripts/import_public_writers.py
@@ -20,7 +23,6 @@ Writes data/public/images/*.png and data/public.jsonl.
 """
 import json
 import re
-import zipfile
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -32,7 +34,7 @@ from wlm.data import tokens
 ROOT = Path("data/raw/crohme23/TC11_CROHME23")
 OUT = Path("data/public")
 EVAL_WRITERS = {"J021", "J022", "J023", "J024", "J025"}
-DEV_WRITERS = {"User002"}
+DEV_WRITERS = {"J011", "J012", "J015"}
 VOCAB = set(Path("third_party/CoMER/comer/datamodule/dictionary.txt").read_text().split())
 ANNOTATION = re.compile(r'<annotation type="([^"]+)"[^>]*>([^<]*)<')
 
@@ -178,7 +180,7 @@ def main():
     for path in sorted(ink_dir.glob("*.inkml")):
         info = annotations(path)
         writer = info.get("writer")
-        if writer not in EVAL_WRITERS:
+        if writer not in EVAL_WRITERS | DEV_WRITERS:
             continue
         latex = normalize(info.get("truth", ""))
         if latex is None:
@@ -189,26 +191,9 @@ def main():
         image.save(target)
         rows.append({"id": f"CROHME23-{path.stem}", "image": str(target.resolve()), "latex": latex,
                      "writer_id": f"CROHME23:{writer}", "dataset": "CROHME23_train",
-                     "official_split": "train", "polarity": "dark_on_light", "role": "evaluation",
+                     "official_split": "train", "polarity": "dark_on_light",
+                     "role": "evaluation" if writer in EVAL_WRITERS else "development",
                      "raw_latex": info.get("truth")})
-
-    # 2. Development writer from the bundled CoMER training data.
-    with zipfile.ZipFile("third_party/CoMER/data.zip") as z:
-        captions = dict(line.split(maxsplit=1) for line in
-                        z.read("data/train/caption.txt").decode().splitlines())
-        for path in sorted((ROOT / "INKML/train/CROHME2019").glob("*.inkml")):
-            writer = annotations(path).get("writer")
-            if writer not in DEV_WRITERS:
-                continue
-            if path.stem not in captions:
-                skipped[f"{writer}: not in bundled data"] += 1
-                continue
-            target = OUT / "images" / f"{path.stem}.bmp"
-            target.write_bytes(z.read(f"data/train/img/{path.stem}.bmp"))
-            rows.append({"id": f"CROHME19-{path.stem}", "image": str(target.resolve()),
-                         "latex": captions[path.stem], "writer_id": f"CROHME19:{writer}",
-                         "dataset": "CoMER-bundled-CROHME-train", "official_split": "train",
-                         "polarity": "light_on_dark", "role": "development"})
 
     Path("data/public.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
     counts = Counter(r["writer_id"] for r in rows)

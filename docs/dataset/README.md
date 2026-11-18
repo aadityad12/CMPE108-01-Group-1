@@ -9,12 +9,14 @@ how they were made so anyone can rebuild them.
 |---|---|---|---|---|---|
 | team01 (Aaditya) | Handwritten for this project | Evaluation | 159 | 50 | 10, 25, 50, 100 |
 | CROHME23:J021–J025 | CROHME 2023 training set | Evaluation | 61–71 each | 25 | 10, 25 |
-| CROHME19:User002 | CROHME 2019 training set | Tuning only | 198 | 50 | 10, 25, 50, 100 |
+| CROHME23:J011, J012, J015 | CROHME 2023 training set | Tuning only | 35–36 each | 25 | 10 |
 
 - The CROHME 2023 writers were collected after the CoMER checkpoint was
   trained, so the base model has not seen them.
-- User002 is part of CoMER's training data. It is only used to pick learning
-  rates and step counts, never for reported results.
+- The three tuning writers are only used to pick learning rates and step
+  counts, never for reported results. CROHME 2019 User002 (198 formulas) was
+  tried first, but the base model already scores 100% on it (it was in
+  CoMER's training data), so it shows nothing about tuning.
 - Splits are frozen with seed 42 and checked with
   `wlm.leakage --require-formula-disjoint`: no formula is in both a writer's
   support pool and test set.
@@ -59,8 +61,9 @@ base model on 60 images from other 2023 writers).
 
 ```bash
 python -m wlm.prepare writer-splits --manifest data/team.jsonl --output data/writers/team --seed 42
-python -m wlm.prepare writer-splits --manifest data/public.jsonl --writers CROHME19:User002 \
-  --output data/writers/dev --seed 42
+python -m wlm.prepare writer-splits --manifest data/public.jsonl \
+  --writers CROHME23:J011,CROHME23:J012,CROHME23:J015 \
+  --output data/writers/dev --test-size 25 --budgets 10 --seed 42
 python -m wlm.prepare writer-splits --manifest data/public.jsonl \
   --writers CROHME23:J021,CROHME23:J022,CROHME23:J023,CROHME23:J024,CROHME23:J025 \
   --output data/writers/public --test-size 25 --budgets 10,25 --seed 42
