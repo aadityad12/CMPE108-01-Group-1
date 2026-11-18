@@ -5,6 +5,22 @@ Raw outputs live in `runs/` (git-ignored); this file keeps the numbers.
 
 Metrics are token-level (see `wlm/metrics.py`), not official CROHME symbol-graph scores.
 
+## 2026-11-17 · Demo dry run on the Mac (CPU)
+
+`python app.py --device cpu`, driven through its two endpoints (adapt, recognize)
+with the 10 pilot support images (inverted to dark ink on white, as the demo expects)
+and one held-out image. Method LoRA, 200 steps.
+
+| Check | Result |
+|---|---|
+| Base recognition of a new image | Correct, 1.4 s |
+| Adapt to 10 labeled images | Finished in 28 s |
+| Label line names a missing file | Rejected: "use filename, one TAB, then LaTeX" |
+| Label uses a token outside the vocabulary | Rejected, names the token |
+| Fewer than 10 images | Rejected: "Use 10 to 100 labeled expression images" |
+
+The demo can run live on a laptop during the presentation. No HPC or tunnel needed.
+
 ## 2026-11-03 · CPU pilot: full, decoder and LoRA on 10 hard images
 
 **Not a personalization result.** The support images come from many CROHME 2014 writers
