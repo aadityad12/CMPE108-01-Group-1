@@ -49,6 +49,28 @@ class CoreTests(unittest.TestCase):
             self.assertTrue(all(a < b for a, b in zip(sets, sets[1:])))
             self.assertFalse(sets[-1] & {r["id"] for r in read_rows(path / "test.jsonl")})
 
+    def test_small_budget_writer_splits(self):
+        # Writers with ~60 formulas use budgets 10,25 and a 25-image test set.
+        import argparse
+        with tempfile.TemporaryDirectory() as name:
+            folder = Path(name)
+            rows = [{"id": str(i), "image": str(folder / f"{i}.png"), "latex": f"x + {i}",
+                     "writer_id": "small", "dataset": "unit", "polarity": "dark_on_light"}
+                    for i in range(60)]
+            manifest = folder / "rows.jsonl"
+            write_rows(manifest, rows)
+            writer_splits(argparse.Namespace(manifest=str(manifest), writers=None, seed=42,
+                                             output=str(folder / "splits"), test_size=25,
+                                             budgets="10,25"))
+            report = json.loads((folder / "splits/split_report.json").read_text())
+            self.assertEqual(report[0]["status"], "ready")
+            path = Path(report[0]["folder"])
+            self.assertFalse((path / "adapt_50.jsonl").exists())
+            support = {r["id"] for r in read_rows(path / "adapt_25.jsonl")}
+            test = {r["id"] for r in read_rows(path / "test.jsonl")}
+            self.assertEqual((len(support), len(test)), (25, 25))
+            self.assertFalse(support & test)
+
     def test_lora_identity_and_gradient(self):
         from comer.utils.utils import ce_loss, to_bi_tgt_out
         from wlm.data import make_batch

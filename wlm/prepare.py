@@ -149,9 +149,13 @@ def writer_splits(args):
         for row in sorted(items, key=lambda r: r["id"]):
             unique.setdefault(canonical(row["latex"]), row)
         items = list(unique.values())
-        if len(items) < 100 + args.test_size:
+        # Budgets are nested support sets (adapt_10 is inside adapt_25, ...).
+        # Writers with fewer formulas can use smaller budgets, e.g. 10,25.
+        budgets = sorted(int(k) for k in getattr(args, "budgets", "10,25,50,100").split(","))
+        needed = budgets[-1] + args.test_size
+        if len(items) < needed:
             summary.append({"writer_id": writer, "status": "insufficient",
-                            "unique_formulas": len(items), "needed": 100 + args.test_size})
+                            "unique_formulas": len(items), "needed": needed})
             continue
         random.Random(f"{args.seed}:{writer}").shuffle(items)
         test, pool = items[:args.test_size], items[args.test_size:]
@@ -161,11 +165,11 @@ def writer_splits(args):
         slug += "_" + hashlib.sha256(writer.encode()).hexdigest()[:8]
         folder = Path(args.output) / slug
         write_rows(folder / "test.jsonl", test)
-        for k in (10, 25, 50, 100):
+        for k in budgets:
             write_rows(folder / f"adapt_{k}.jsonl", pool[:k])
         summary.append({"writer_id": writer, "folder": str(folder.resolve()), "status": "ready",
                         "unique_formulas": len(items), "test_size": len(test),
-                        "unused": len(pool) - 100})
+                        "budgets": budgets, "unused": len(pool) - budgets[-1]})
     out = Path(args.output)
     out.mkdir(parents=True, exist_ok=True)
     (out / "split_report.json").write_text(json.dumps(summary, indent=2))
@@ -222,6 +226,8 @@ def main():
     p.add_argument("--output", default="data/writers")
     p.add_argument("--writers", help="Comma-separated exact, namespaced writer IDs")
     p.add_argument("--test-size", type=int, default=50)
+    p.add_argument("--budgets", default="10,25,50,100",
+                   help="Support-set sizes, comma-separated; the largest plus test-size must fit")
     p.add_argument("--seed", type=int, default=42)
     p.set_defaults(func=writer_splits)
     p = sub.add_parser("domain-split")
